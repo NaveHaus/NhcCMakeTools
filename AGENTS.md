@@ -104,7 +104,7 @@ Most common sequence of `openspec` operations:
     ```cmake
     nhc_add_test_executable(<feature>Tests SOURCES <feature>Tess.cpp USES NhcTestLib)
     ```
-    Note: `USES NhcTestLib` ensures Catch2 is configured properly for the test.
+    - Note: `USES NhcTestLib` ensures Catch2 is configured properly for the test.
 - [Catch2](https://github.com/catchorg/Catch2/blob/v3.11.0/docs/test-cases-and-sections.md#) behavior-driven (BDD) testing MUST be used to implement tests aligned with specification of the functionality to be implemented, e.g.:
   ```cpp
   SCENARIO("vector can be sized and resized") {
@@ -129,7 +129,7 @@ Most common sequence of `openspec` operations:
     }
   }
   ```
-  Note: If you think a BDD test cannot be used or does not apply, iterate with the user to come up with a workable solution.
+  - Note: If you think a BDD test cannot be used or does not apply, iterate with the user to come up with a workable solution.
 
 - If modifications are made to any `CMakeLists.txt`, execute `cmake --workflow --preset=<preset>` to reconfigure and execute the build to check for errors, e.g. `cmake --workflow --preset=vs18-vcpkg-mt-s-release` to reconfigure and execute a Visual Studio 18 2026 build.
   - Note: If the preset to use is unclear, ask the user.
@@ -142,7 +142,7 @@ Most common sequence of `openspec` operations:
   ```
   - Note: If the preset to use is unclear, ask the user.
 - ALL tests MUST be verified once all changes are complete by running `cmake --workflow --preset=<preset>-test`, where `<preset>` corresponds to the current build under test, e.g. `cmake --workflow --preset=vs18-vcpkg-mt-s-release-test` to build and run the Visual Studio 18 2026 tests.
-  Note: If the preset to use is unclear, ask the user.
+  - Note: If the preset to use is unclear, ask the user.
 
 ## Example Openspec Workflows
 ### One-Shot Implementation
