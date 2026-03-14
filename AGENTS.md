@@ -23,6 +23,7 @@ To maintain repository integrity, agents MUST follow these rules:
   - DO warn the user if `git` returns an error or reports that the remote branch is missing.
   - DO offer to resolve `git` errors, presenting the user with 1-4 options for doing so.
 - **Path Handling**: Always use absolute paths when interacting with file system tools.
+- **Build Consistency**: DO NOT directly modify or remove any files under the `.build` directory.
 - **Verification**: Always run build and test commands after modifications.
 
 ## Terminology
