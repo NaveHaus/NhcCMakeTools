@@ -1,0 +1,91 @@
+{
+  "version": 10,
+  "configurePresets": [
+    {
+      "name": ".defaults",
+      "binaryDir": "${sourceDir}/.build/${presetName}"
+    },
+    {
+      "$comment": [
+        "Set VCPKG_ROOT.",
+        "Defines VCPKG_ROOT, which defaults to _./vcpkg-root_",
+        "Note: The value can be overridden by the environment."
+      ],
+      "name": ".vcpkg-root",
+      "hidden": true,
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "environment": {
+        "VCPKG_ROOT": "./vcpkg-root"
+      }
+    },
+    {
+      "name": "vs18-vcpkg-mt-s",
+      "inherits": [
+        ".defaults",
+        ".vcpkg-root"
+      ],
+      "generator": "Visual Studio 18 2026",
+      "cacheVariables": {
+        "VCPKG_INSTALL_OPTIONS": "--no-print-usage",
+        "VCPKG_TARGET_TRIPLET": "$env{VCPKG_TARGET_TRIPLET}",
+        "VCPKG_HOST_TRIPLET": "$env{VCPKG_TARGET_TRIPLET}"
+      },
+      "environment": {
+        "VCPKG_TARGET_TRIPLET": "x64-windows-static",
+        "VCPKG_HOST_TRIPLET": "x64-windows-static"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "vs18-vcpkg-mt-s-release",
+      "configurePreset": "vs18-vcpkg-mt-s",
+      "inheritConfigureEnvironment": true,
+      "configuration": "Release",
+      "jobs": 0
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "vs18-vcpkg-mt-s-release",
+      "configurePreset": "vs18-vcpkg-mt-s",
+      "inheritConfigureEnvironment": true,
+      "configuration": "Release",
+      "execution": {
+        "jobs": 0
+      }
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "vs18-vcpkg-mt-s-release",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "vs18-vcpkg-mt-s"
+        },
+        {
+          "type": "build",
+          "name": "vs18-vcpkg-mt-s-release"
+        }
+      ]
+    },
+    {
+      "name": "vs18-vcpkg-mt-s-release-test",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "vs18-vcpkg-mt-s"
+        },
+        {
+          "type": "build",
+          "name": "vs18-vcpkg-mt-s-release"
+        },
+        {
+          "type": "test",
+          "name": "vs18-vcpkg-mt-s-release"
+        }
+      ]
+    }
+  ]
+}
