@@ -26,6 +26,7 @@
       ],
       "generator": "Visual Studio 18 2026",
       "cacheVariables": {
+        "VCPKG_INSTALLED_DIR": "${sourceDir}/.build/.cache-${presetName}",
         "VCPKG_INSTALL_OPTIONS": "--no-print-usage",
         "VCPKG_TARGET_TRIPLET": "$env{VCPKG_TARGET_TRIPLET}",
         "VCPKG_HOST_TRIPLET": "$env{VCPKG_TARGET_TRIPLET}"
