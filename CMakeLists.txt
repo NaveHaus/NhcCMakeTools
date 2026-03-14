@@ -5,6 +5,8 @@ if(NOT DEFINED CMAKE_CXX_COMPILER_ID)
   message(FATAL_ERROR "${PROJECT_NAME} requires a C++ compiler")
 endif()
 
+find_package(Qt6 6.9 REQUIRED COMPONENTS Core)
+
 set(NHC_CXX_STANDARD cxx_std_23)
 
 list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
@@ -31,8 +33,6 @@ cmake_dependent_option(BUILD_TESTING
   "PROJECT_IS_TOP_LEVEL"
   OFF # Oherwise, default to OFF.
 )
-
-find_package(Qt6 REQUIRED COMPONENTS Base)
 
 add_subdirectory(src)
 

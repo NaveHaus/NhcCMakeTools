@@ -5,6 +5,7 @@
   "homepage": "https://github.com/navehaus/nhccmaketools.git",
   "dependencies": [
     "qtbase",
+    "catch2",
     "brotli",
     "bzip2",
     "double-conversion",
