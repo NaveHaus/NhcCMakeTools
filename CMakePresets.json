@@ -59,19 +59,6 @@
   ],
   "workflowPresets": [
     {
-      "name": "vs18-vcpkg-mt-s-release",
-      "steps": [
-        {
-          "type": "configure",
-          "name": "vs18-vcpkg-mt-s"
-        },
-        {
-          "type": "build",
-          "name": "vs18-vcpkg-mt-s-release"
-        }
-      ]
-    },
-    {
       "name": "vs18-vcpkg-mt-s-release-test",
       "steps": [
         {
