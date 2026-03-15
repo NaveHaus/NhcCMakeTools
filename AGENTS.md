@@ -1,6 +1,22 @@
 # Context, Rules, and Guidelines for AI Agents
 The NhcVckgTools project hosts tools that focus on improving quality-of-life for developers working with the [CMake](https://cmake.org) cross-platform build system.
 
+## Sections
+- [Tech stack](#tech-stack)
+- [Safety & Operational Rules (MANDATORY)](#safety--operational-rules-mandatory)
+- [Terminology](#terminology)
+- [Process](#process)
+  - [Requirements (MANDATORY)](#requirements-mandatory)
+- [Code Style](#code-style)
+  - [Requirements (MANDATORY)](#requirements-mandatory-1)
+- [Testing](#testing)
+  - [Requirements (MANDATORY)](#requirements-mandatory-2)
+  - [Edit-Build-Test Commands (MANDATORY)](#edit-build-test-commands-mandatory)
+- [Example Openspec Workflows](#example-openspec-workflows)
+  - [One-Shot Implementation](#one-shot-implementation)
+  - [One-Shot Exploration to Implementation](#one-shot-exploration-to-implementation)
+  - [Iterative Exploration to Implementation](#iterative-exploration-to-implementation)
+
 ## Tech stack
 - c++23
 - clang-format
