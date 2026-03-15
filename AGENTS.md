@@ -1,4 +1,6 @@
 # Context, Rules, and Guidelines for AI Agents
+The NhcVckgTools project hosts tools that focus on improving quality-of-life for developers working with the [CMake](https://cmake.org) cross-platform build system.
+
 ## Tech stack
 - c++23
 - clang-format
@@ -7,9 +9,6 @@
 - Catch2 v3.11+
 - Doxygen 1.16+
 - GitHub Flavored Markdown
-
-# Agent Guidelines
-The NhcVckgTools project hosts tools that focus on improving quality-of-life for developers working with the [CMake](https://cmake.org) cross-platform build system.
 
 ## Safety & Operational Rules (MANDATORY)
 To maintain repository integrity, agents MUST follow these rules:
@@ -94,7 +93,7 @@ Most common sequence of `openspec` operations:
   };
   ```
 
-## Building and Testing
+## Testing
 ### Requirements (MANDATORY)
 - A test-driven development (TDD) process MUST be used when changing or adding code.
 - ALL changes to existing code MUST be tested by updating ALL relevant existing tests following TDD.
@@ -132,20 +131,56 @@ Most common sequence of `openspec` operations:
   ```
   - Note: If you think a BDD test cannot be used or does not apply, iterate with the user to come up with a workable solution.
 
-- If modifications are made to any `CMakeLists.txt`, execute `cmake --workflow --preset=<preset>` to reconfigure and execute the build to check for errors, e.g. `cmake --workflow --preset=vs18-vcpkg-mt-s-release` to reconfigure and execute a Visual Studio 18 2026 build.
-  - Note: If the preset to use is unclear, ask the user.
-- Use `cmake --build --preset=<preset>` to build code after changes are made to source to check for errors, e.g. `cmake --build --preset=vs18-vcpkg-mt-s-release` to execute a Visual Studio 18 2026 build.
-  - Note: If the preset to use is unclear, ask the user.
-- ALL tests for EACH change MUST be verified once a the change is complete by running `cmake --workflow --preset=<preset> ; ctest --preset=<preset> --tests-regex '<feature>Tests'`, e.g. to build and run `MyClassTests` for Visual Studio 18 2026:
-  ```powershell
-  cmake --build --preset=vs18-vcpkg-mt-s-release
-  ctest --preset=vs18-vcpkg-mt-s-release -R 'MyClassTests'
-  ```
-  - Note: If the preset to use is unclear, ask the user.
-- ALL tests MUST be verified once all changes are complete by running `cmake --workflow --preset=<preset>-test`, where `<preset>` corresponds to the current build under test, e.g. `cmake --workflow --preset=vs18-vcpkg-mt-s-release-test` to build and run the Visual Studio 18 2026 tests.
-  - Note: If the preset to use is unclear, ask the user.
+### Edit-Build-Test Commands (MANDATORY)
+
+- **Listing Available Presets**
+  - `cmake --list-presets=configure`: List all CMake presets available to generate build files for specific compilers and operating environments.
+  - `cmake --list-presets=build`: List all CMake presets available to execute a configured build for specific compilers and operating environments.
+  - `cmake --list-presets=test`: List all CMake presets available to test a configured and executed build for specific compilers and operating environments.
+  - `cmake --list-presets=workflow`: List all CMake presets available to execute an end-to-end configure/build/test cycle for specific compilers and operating environments.
+
+- **Configuring a Build**
+  - `cmake --preset=<preset>`: Configure the `<preset>` build. Example to configure a Visual Studio 18 2026 build:
+    ```powershell
+    cmake --preset=vs18-vcpkg-mt-s
+    ```
+  - **Result**: Creates the `.build/vs18-vcpkg-mt-s` binary directory with the build configured for Visual Studio 18 2026.
+
+- **Executing a Build**
+  - `cmake --build --preset=<preset>`: Build the `<preset>` build. The build MUST be configured first. Example to execute a Visual Studio 18 2026 Release build:
+    ```powershell
+    cmake --build --preset=vs18-vcpkg-mt-s-release
+    ```
+  - **Result**: Executes a Release build under `.build/vs18-vcpkg-mt-s`, generating all library and executable artifacts.
+
+- **Executing All Tests**
+  - `cmake --test --preset=<preset>`: Test the `<preset>` build. The build MUST be configured AND built first. Example to test a Visual Studio 18 2026 Release build:
+    ```powershell
+    cmake --test --preset=vs18-vcpkg-mt-s-release
+    ```
+  - **Result**: Executes all tests for a Release build under `.build/vs18-vcpkg-mt-s`.
+
+- **One-Shot Configuring, Executing, and Testing a Build**
+  - `cmake --workflow --preset=<preset>-test`: Configure, execute, and test the `<preset>` build. Example to configure, build, and test a Visual Studio 18 2026 build:
+    ```powershell
+    cmake --workflow --preset=vs18-vcpkg-mt-s-release
+    ```
+  - **Result**: Executes all tests for a Release build under `.build/vs18-vcpkg-mt-s`.
+
+- **Building and Testing in a TDD Cycle**
+  - After modifying a `CMakeLists.txt` file, execute `cmake --preset=<preset>` to reconfigure the `<preset>` build.
+  - After making changes to create or update `<feature>Tests.cpp`:
+    - Execute `cmake --build --preset=<preset> --target <feature>Tests` to build the modified test.
+    - Execute `cmake --test --preset=<preset> --test-regex <feature>Tests` to execute the modified test.
+
+- **Verification Testing after a TDD Cycle**
+  - After completing a TDD cycle to implement a new feature or modify an existing feature, verify correctness by executing:
+    ```powershell
+    cmake --workflow --preset=vs18-vcpkg-mt-s-release
+    ```
 
 ## Example Openspec Workflows
+
 ### One-Shot Implementation
 Can be used for simple changes that require no investigation or decision making prior to implementation:
 - Generate the `openspec` change artifacts in one shot:
@@ -153,7 +188,7 @@ Can be used for simple changes that require no investigation or decision making 
   - `opsx-ff <change-name>`
 - Implement and verify the change:
   - `opsx-apply <change-name>`
-  - `./build.ps1 -Tasks test`
+  - See [Edit-Build-Test Commands (MANDATORY)](#edit-build-test-commands-mandatory) for the required commands to use to implement the change.
   - `opsx-verify <change-name>`
 - Locally commit the working `openspec` artifacts and associated project changes:
   - `git add ./openspec/ <changed-files-and-or-directories>`; e.g.:
@@ -166,6 +201,7 @@ Can be used for simple changes that require no investigation or decision making 
   - `opsx-archive <change-name>`
   - `git add ./openspec/`
   - `nhc-opsx-commit`
+
 ### One-Shot Exploration to Implementation
 Can be used for straightforward changes that require some upfront investigation and/or decision making prior to implementing.
 - Interactively research and investigate a change with the user:
@@ -175,7 +211,7 @@ Can be used for straightforward changes that require some upfront investigation 
   - `opsx-ff <change-name>`
 - Implement and verify the change:
   - `opsx-apply <change-name>`
-  - `./build.ps1 -Tasks test`
+  - See [Edit-Build-Test Commands (MANDATORY)](#edit-build-test-commands-mandatory) for the required commands to use to implement the change.
   - `opsx-verify <change-name>`
 - Locally commit the working `openspec` artifacts and associated project changes:
   - `git add ./openspec/ <changed-files-and-or-directories>`; e.g.:
@@ -188,6 +224,7 @@ Can be used for straightforward changes that require some upfront investigation 
   - `opsx-archive <change-name>`
   - `git add ./openspec/`
   - `nhc-opsx-commit`
+
 ### Iterative Exploration to Implementation
 Can be used for complex changes or changes with unclear requirements.
 - Interactively research and investigate a change with the user:
@@ -197,7 +234,7 @@ Can be used for complex changes or changes with unclear requirements.
   - `opsx-continue <change-name>` iteratively and interactively with the user until all artifacts have been accepted.
 - Implement and verify the change:
   - `opsx-apply <change-name>`
-  - `./build.ps1 -Tasks test`
+  - See [Edit-Build-Test Commands (MANDATORY)](#edit-build-test-commands-mandatory) for the required commands to use to implement the change.
   - `opsx-verify <change-name>`
 - Locally commit the working `openspec` artifacts and associated project changes:
   - `git add ./openspec/ <changed-files-and-or-directories>`; e.g.:
