@@ -54,7 +54,7 @@ function(nhc_target_compile_defaults InTarget)
 endfunction()
 
 function(nhc_target_executable_properties_defaults InTarget)
-  if(BUILD_SHARED_LIBS AND ${NHC_ENABLE_RELATIVE_TEST_PATHS})
+  if(BUILD_SHARED_LIBS AND NHC_ENABLE_RELATIVE_TEST_PATHS)
     # Use relative RPATHs in the build tree (will only take affect on platforms that
     # support it):
     set_target_properties(${InTarget} PROPERTIES BUILD_RPATH_USE_ORIGIN TRUE)
@@ -114,7 +114,7 @@ function(nhc_target_library_properties_defaults InTarget)
     set_target_properties(${InTarget} PROPERTIES FOLDER "libs")
   endif()
 
-  if(BUILD_SHARED_LIBS AND ${NHC_ENABLE_RELATIVE_TEST_PATHS})
+  if(BUILD_SHARED_LIBS AND NHC_ENABLE_RELATIVE_TEST_PATHS)
     # Use relative RPATHs for shared libs if requested (will only take affect on
     # platforms that support it):
     get_target_property(_type ${InTarget} TYPE)
@@ -300,7 +300,7 @@ function(nhc_configure_test_executable InTarget)
     set(_test_name "${InTarget}")
   endif()
 
-  if(${NHC_ENABLE_RELATIVE_TEST_PATHS})
+  if(NHC_ENABLE_RELATIVE_TEST_PATHS)
     # Make the path relative with generator expressions:
     add_test(NAME ${_test_name}
       COMMAND $<PATH:RELATIVE_PATH,$<TARGET_FILE:${InTarget}>,${CMAKE_BINARY_DIR}>
@@ -413,7 +413,7 @@ function(nhc_add_driver_test)
     endif()
   endif()
 
-  if(${NHC_ENABLE_RELATIVE_TEST_PATHS})
+  if(NHC_ENABLE_RELATIVE_TEST_PATHS)
     set(_driver_command $<PATH:RELATIVE_PATH,$<TARGET_FILE:${arg_DRIVER}>,${CMAKE_BINARY_DIR}>)
   else()
     set(_driver_command $<TARGET_FILE:${arg_DRIVER}>)
