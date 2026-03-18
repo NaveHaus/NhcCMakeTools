@@ -12,7 +12,7 @@ The NhcVckgTools project hosts tools that focus on improving quality-of-life for
 - [Testing](#testing)
   - [Requirements (MANDATORY)](#requirements-mandatory-2)
   - [Edit-Build-Test Commands (MANDATORY)](#edit-build-test-commands-mandatory)
-- [Example Openspec Workflows](#example-openspec-workflows)
+- [Example OpenSpec Workflows](#example-openspec-workflows)
   - [One-Shot Implementation](#one-shot-implementation)
   - [One-Shot Exploration to Implementation](#one-shot-exploration-to-implementation)
   - [Iterative Exploration to Implementation](#iterative-exploration-to-implementation)
@@ -42,16 +42,17 @@ To maintain repository integrity, agents MUST follow these rules:
 - **Verification**: Always run build and test commands after modifications.
 
 ## Terminology
-- **openspec**: An artifact-driven workflow for managing software changes (features, fixes, etc.) through structured specifications and tasks.
-- **opsx-***: Shortcut commands for interacting with the OpenSpec workflow.
-- **nhc-opsx-commit**: A helper command that uses OpenSpec artifacts and the `conventional-commits` skill to generate compliant git commit messages.
+- **OpenSpec**: An artifact-driven workflow for managing software changes (features, fixes, etc.) through structured specifications and tasks.
+- **openspec-***: Agent skills for interacting with an OpenSpec change workflow.
+- **convetional-commits**: An agent skill for generating a `git` commit message following the Conventional Commits v1.0 specification.
+- **nhc-openspec-commit**: A skill that uses the `conventional-commits` skill to generate compliant `git` commit messages summarizing the changes made by an OpenSpec workflow.
 
 ## Process
 ### Requirements (MANDATORY)
-- An `openspec` workflow MUST be used to plan new features and modifications of existing features (e.g. bug fixes). Warn the user if the `openspec` directory is missing or inaccessible.
+- An OpenSpec workflow MUST be used to plan new features and modifications of existing features (e.g. bug fixes). Warn the user if the `openspec` directory is missing or inaccessible.
 - A test-driven development (TDD) RED/GREEN/REFACTORING workflow is required when implementing ALL code additions and modifications. Warn the user if the `tdd` skill is missing or inaccessible.
-- The `nhc-opsx-commit` command MUST be used to generate a `git` commit message and commit changes made WITH an `openspec` workflow. Warn the user if the `nhc-opsx-commit` command is missing or inaccessible.
-- The `conventional-commits` skill MUST be used to generate a `git` commit message for changes made WITHOUT an `openspec` workflow. Warn the user if the `conventional-commits` skill is missing or inaccessible.
+- The `nhc-opsx-commit` skill MUST be used to generate a `git` commit message and commit changes made WITH an OpenSpec workflow, but only AFTER the OpenSpec change has been archived. Warn the user if the `nhc-opsx-commit` skill is missing or inaccessible.
+- The `conventional-commits` skill MUST be used to generate a `git` commit message for changes made OUTSiDE of an OpenSpec workflow. Warn the user if the `conventional-commits` skill is missing or inaccessible.
 - NOTE: If unsure about which commit strategy applies, you MUST ask the user to avoid generating spurious or erroneous commits.
 
 Most common sequence of `openspec` operations:
@@ -195,24 +196,24 @@ Most common sequence of `openspec` operations:
     cmake --workflow --preset=vs18-vcpkg-mt-s-release-test
     ```
 
-## Example Openspec Workflows
+## Example OpenSpec Workflows
 
 ### One-Shot Implementation
 Can be used for simple changes that require no investigation or decision making prior to implementation:
-- Generate the `openspec` change artifacts in one shot:
+- Generate the OpenSpec change artifacts in one shot:
   - `opsx-new <change-name>`
   - `opsx-ff <change-name>`
 - Implement and verify the change:
   - `opsx-apply <change-name>`
   - See [Edit-Build-Test Commands (MANDATORY)](#edit-build-test-commands-mandatory) for the required commands to use to implement the change.
   - `opsx-verify <change-name>`
-- Locally commit the working `openspec` artifacts and associated project changes:
+- Locally commit the working OpenSpec artifacts and associated project changes:
   - `git add ./openspec/ <changed-files-and-or-directories>`; e.g.:
     ```bash
     git add ${pwd}/openspec ${pwd}/CMakeLists.txt ${pwd}/tests/NhcMyLibName/MyClassTests.cpp
     ```
   - `nhc-opsx-commit`
-- Locally archive the `openspec` completed change artifacts:
+- Locally archive the completed OpenSpec change artifacts:
   - `opsx-sync <change-name>`
   - `opsx-archive <change-name>`
   - `git add ./openspec/`
@@ -222,20 +223,20 @@ Can be used for simple changes that require no investigation or decision making 
 Can be used for straightforward changes that require some upfront investigation and/or decision making prior to implementing.
 - Interactively research and investigate a change with the user:
   - `opsx-explore <topic>`
-- Generate the `openspec` change artifacts in one shot:
+- Generate the OpenSpec change artifacts in one shot:
   - `opsx-new <change-name>`
   - `opsx-ff <change-name>`
 - Implement and verify the change:
   - `opsx-apply <change-name>`
   - See [Edit-Build-Test Commands (MANDATORY)](#edit-build-test-commands-mandatory) for the required commands to use to implement the change.
   - `opsx-verify <change-name>`
-- Locally commit the working `openspec` artifacts and associated project changes:
+- Locally commit the working OpenSpec artifacts and associated project changes:
   - `git add ./openspec/ <changed-files-and-or-directories>`; e.g.:
     ```bash
     git add ${pwd}/openspec ${pwd}/CMakeLists.txt ${pwd}/tests/NhcMyLibName/MyClassTests.cpp
     ```
   - `nhc-opsx-commit`
-- Locally archive the `openspec` completed change artifacts:
+- Locally archive the completed OpenSpec change artifacts:
   - `opsx-sync <change-name>`
   - `opsx-archive <change-name>`
   - `git add ./openspec/`
@@ -245,20 +246,20 @@ Can be used for straightforward changes that require some upfront investigation 
 Can be used for complex changes or changes with unclear requirements.
 - Interactively research and investigate a change with the user:
   - `opsx-explore <topic>`
-- Generate the `openspec` change artifacts in one shot:
+- Generate the OpenSpec change artifacts in one shot:
   - `opsx-new <change-name>`
   - `opsx-continue <change-name>` iteratively and interactively with the user until all artifacts have been accepted.
 - Implement and verify the change:
   - `opsx-apply <change-name>`
   - See [Edit-Build-Test Commands (MANDATORY)](#edit-build-test-commands-mandatory) for the required commands to use to implement the change.
   - `opsx-verify <change-name>`
-- Locally commit the working `openspec` artifacts and associated project changes:
+- Locally commit the working OpenSpec artifacts and associated project changes:
   - `git add ./openspec/ <changed-files-and-or-directories>`; e.g.:
     ```bash
     git add ${pwd}/openspec ${pwd}/CMakeLists.txt ${pwd}/tests/NhcMyLibName/MyClassTests.cpp
     ```
   - `nhc-opsx-commit`
-- Locally archive the `openspec` completed change artifacts:
+- Locally archive the completed OpenSpec change artifacts:
   - `opsx-sync <change-name>`
   - `opsx-archive <change-name>`
   - `git add ./openspec/`
