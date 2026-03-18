@@ -61,12 +61,10 @@ Most common sequence of `openspec` operations:
 3. `opsx-apply <name>`: Implement the tasks (following TDD process - see [Testing](#testing)).
 4. `./build.ps1 -Tasks test`: Verify all tests before completing the change.
 5. `opsx-verify <name>`: Validate implementation against specs (see [Error Handling Guidance](#error-handling-guidance) if this fails).
-6. `git add ./openspec/ <paths-to-changed-files-and-directories>`: Prepare to commit the changes.
-7. `nhc-opsx-commit`: Generate a `conventional-commits` `git` commit message based on the changes and complete the commit.
-8. `opsx-sync <name>`: Make change specs permanent.
-9. `opsx-archive <name>`: Archive the change.
-10. `git add ./openspec/`: Prepare to commit the archived change artifacts.
-11. `nhc-opsx-commit`: Generate a `conventional-commits` `git` commit message based on the changes and complete the commit.
+6. `opsx-sync <name>`: Make OpenSpec specs artifacts permanent.
+7. `opsx-archive <name>`: Archive the OpenSpec change.
+8. `git add ./openspec/ <paths-to-changed-files-and-directories>`: Stage the archived OpenSpec artifacts and associated changes.
+9. `nhc-opsx-commit`: Generate a `conventional-commits` `git` commit message based on the staged changes and complete the commit.
 
 ## Code Style
 ### Requirements (MANDATORY)
@@ -207,17 +205,15 @@ Can be used for simple changes that require no investigation or decision making 
   - `opsx-apply <change-name>`
   - See [Edit-Build-Test Commands (MANDATORY)](#edit-build-test-commands-mandatory) for the required commands to use to implement the change.
   - `opsx-verify <change-name>`
+- Archive the completed OpenSpec change:
+  - `opsx-sync <change-name>`
+  - `opsx-archive <change-name>`
 - Locally commit the working OpenSpec artifacts and associated project changes:
-  - `git add ./openspec/ <changed-files-and-or-directories>`; e.g.:
+  - `git add ./openspec/ <changed-files-and-or-directories>`, e.g.:
     ```bash
     git add ${pwd}/openspec ${pwd}/CMakeLists.txt ${pwd}/tests/NhcMyLibName/MyClassTests.cpp
     ```
-  - `nhc-opsx-commit`
-- Locally archive the completed OpenSpec change artifacts:
-  - `opsx-sync <change-name>`
-  - `opsx-archive <change-name>`
-  - `git add ./openspec/`
-  - `nhc-opsx-commit`
+  - Use the `nhc-openspec-commit` skill to complete the `git` commit.
 
 ### One-Shot Exploration to Implementation
 Can be used for straightforward changes that require some upfront investigation and/or decision making prior to implementing.
@@ -230,37 +226,33 @@ Can be used for straightforward changes that require some upfront investigation 
   - `opsx-apply <change-name>`
   - See [Edit-Build-Test Commands (MANDATORY)](#edit-build-test-commands-mandatory) for the required commands to use to implement the change.
   - `opsx-verify <change-name>`
+- Archive the completed OpenSpec change:
+  - `opsx-sync <change-name>`
+  - `opsx-archive <change-name>`
 - Locally commit the working OpenSpec artifacts and associated project changes:
-  - `git add ./openspec/ <changed-files-and-or-directories>`; e.g.:
+  - `git add ./openspec/ <changed-files-and-or-directories>`, e.g.:
     ```bash
     git add ${pwd}/openspec ${pwd}/CMakeLists.txt ${pwd}/tests/NhcMyLibName/MyClassTests.cpp
     ```
-  - `nhc-opsx-commit`
-- Locally archive the completed OpenSpec change artifacts:
-  - `opsx-sync <change-name>`
-  - `opsx-archive <change-name>`
-  - `git add ./openspec/`
-  - `nhc-opsx-commit`
+  - Use the `nhc-openspec-commit` skill to complete the `git` commit.
 
 ### Iterative Exploration to Implementation
 Can be used for complex changes or changes with unclear requirements.
 - Interactively research and investigate a change with the user:
   - `opsx-explore <topic>`
-- Generate the OpenSpec change artifacts in one shot:
+- Iteratively generate the OpenSpec change artifacts:
   - `opsx-new <change-name>`
   - `opsx-continue <change-name>` iteratively and interactively with the user until all artifacts have been accepted.
 - Implement and verify the change:
   - `opsx-apply <change-name>`
   - See [Edit-Build-Test Commands (MANDATORY)](#edit-build-test-commands-mandatory) for the required commands to use to implement the change.
   - `opsx-verify <change-name>`
+- Archive the completed OpenSpec change:
+  - `opsx-sync <change-name>`
+  - `opsx-archive <change-name>`
 - Locally commit the working OpenSpec artifacts and associated project changes:
-  - `git add ./openspec/ <changed-files-and-or-directories>`; e.g.:
+  - `git add ./openspec/ <changed-files-and-or-directories>`, e.g.:
     ```bash
     git add ${pwd}/openspec ${pwd}/CMakeLists.txt ${pwd}/tests/NhcMyLibName/MyClassTests.cpp
     ```
-  - `nhc-opsx-commit`
-- Locally archive the completed OpenSpec change artifacts:
-  - `opsx-sync <change-name>`
-  - `opsx-archive <change-name>`
-  - `git add ./openspec/`
-  - `nhc-opsx-commit`
+  - Use the `nhc-openspec-commit` skill to complete the `git` commit.
