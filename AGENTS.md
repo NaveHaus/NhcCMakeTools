@@ -172,14 +172,14 @@ Most common sequence of `openspec` operations:
 - **Executing All Tests**
   - `cmake --test --preset=<preset>`: Test the `<preset>` build. The build MUST be configured AND built first. Example to test a Visual Studio 18 2026 Release build:
     ```powershell
-    cmake --test --preset=vs18-vcpkg-mt-s-release
+    cmake --test --preset=vs18-vcpkg-mt-s-release-test
     ```
   - **Result**: Executes all tests for a Release build under `.build/vs18-vcpkg-mt-s`.
 
 - **One-Shot Configuring, Executing, and Testing a Build**
   - `cmake --workflow --preset=<preset>-test`: Configure, execute, and test the `<preset>` build. Example to configure, build, and test a Visual Studio 18 2026 build:
     ```powershell
-    cmake --workflow --preset=vs18-vcpkg-mt-s-release
+    cmake --workflow --preset=vs18-vcpkg-mt-s-release-test
     ```
   - **Result**: Executes all tests for a Release build under `.build/vs18-vcpkg-mt-s`.
 
@@ -192,7 +192,7 @@ Most common sequence of `openspec` operations:
 - **Verification Testing after a TDD Cycle**
   - After completing a TDD cycle to implement a new feature or modify an existing feature, verify correctness by executing:
     ```powershell
-    cmake --workflow --preset=vs18-vcpkg-mt-s-release
+    cmake --workflow --preset=vs18-vcpkg-mt-s-release-test
     ```
 
 ## Example Openspec Workflows
