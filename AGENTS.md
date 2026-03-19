@@ -68,6 +68,7 @@ Most common sequence of `openspec` operations:
 
 ## Code Style
 ### Requirements (MANDATORY)
+- DO use `nhc_*` CMake functions found in `cmake/NhcTargetFunctions.cmake` to configure projects, tests, and executables.
 - DO use camel-case for class names, e.g. `class MyNewClass`.
 - DO use `<Class>.h`/`<Class>.cpp` when implementing new classes, where `<Class>` is the exact, camel-case name of the class to be implemented, e.g. `MyNewClass.h`/`MyNewClass.cpp`.
 - DO use `m_<Member>` for class member variables, where `<Member>` is a camel-case variable name, e.g. `m_EnableDebug`.
