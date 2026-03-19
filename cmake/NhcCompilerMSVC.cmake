@@ -31,7 +31,6 @@ set(_nhc_public_cxx_definitions
 
 set(_nhc_private_cxx_options
   /permissive-   # Strict(er) standards conformance
-  /GL            # Link-time code generation
 )
 if(PROJECT_IS_TOP_LEVEL)
   list(APPEND _nhc_private_cxx_options
