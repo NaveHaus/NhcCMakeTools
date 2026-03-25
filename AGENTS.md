@@ -114,7 +114,7 @@ Most common sequence of `openspec` operations:
 - A test-driven development (TDD) process MUST be used when changing or adding code.
 - ALL changes to existing code MUST be tested by updating ALL relevant existing tests following TDD.
 - Tests MUST be stored under `tests/<category>`, where `<category>` MUST be the name of the library or tool containing the feature/class under test.
-- Test files MUST follow the naming convention: `tests/<category>/<feature>Tests.cpp`, e.g. `tests/NhcMyLibName/MyClassTests.cpp` for a library class test, or `tests/NhcMyToolName/MyToolSpecificClassTests.cpp` for an executable tool.
+- Test files MUST follow the naming convention: `tests/<category>/<feature>Tests.cpp`, e.g. `tests/MyLibName/MyClassTests.cpp` for a library class test, or `tests/MyToolName/MyToolSpecificClassTests.cpp` for an executable tool.
   - `<feature>` will normally be the name of a C++ class under test, e.g. `MyClassTests.cpp`
   - The test must be registered with CMake by modifying `tests/<category>/CMakeLists.txt` to call the `nhc_add_test_executable()` CMake function, defined in `cmake/NhcTargetFunctions.cmake`, e.g.:
     ```cmake
