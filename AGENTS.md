@@ -1,5 +1,5 @@
 # Context, Rules, and Guidelines for AI Agents
-The NhcVckgTools project hosts tools that focus on improving quality-of-life for developers working with the [CMake](https://cmake.org) cross-platform build system.
+The NhcCMakeTools project hosts tools that focus on improving quality-of-life for developers working with the [CMake](https://cmake.org) cross-platform build system.
 
 ## Sections
 - [Tech stack](#tech-stack)
