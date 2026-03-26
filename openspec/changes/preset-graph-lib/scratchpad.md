@@ -59,9 +59,9 @@ Last updated: 2026-03-26
   - `openspec/changes/preset-graph-lib/design.md`
 
 ### P2: partial expansion reporting is non-testable
-- Status: Needs refinement
+- Status: Consistent
 - Notes:
-  - `specs/preset-macro-context/spec.md` mentions partial expansion may be indicated, but no concrete API or signal is defined.
+  - Resolved: `specs/preset-macro-context/spec.md` defines ExpansionResult with Status and UnresolvedTokens.
 - Artifacts touched:
   - `openspec/changes/preset-graph-lib/specs/preset-macro-context/spec.md`
   - `openspec/changes/preset-graph-lib/specs/preset-condition-ast/spec.md`

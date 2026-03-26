@@ -138,7 +138,7 @@ If an environment value references a missing variable, the reference SHALL remai
 - **GIVEN** a preset environment {"A": "$env{DOES_NOT_EXIST}"}
 - **WHEN** the environment is expanded
 - **THEN** "A" remains "$env{DOES_NOT_EXIST}"
-- **AND** the system can indicate the expansion was partial
+- **AND** the expansion result Status is `PartiallyExpanded`
 
 ### Requirement: Library-Relevant Expanded Fields
 The system SHALL provide a minimal typed view of each preset sufficient to build and evaluate the graphs, including:

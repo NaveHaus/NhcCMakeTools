@@ -3,7 +3,7 @@
 ### Requirement: Condition Evaluation Interface
 The system SHALL define a base Condition type capable of evaluating itself against a given Macro Context, returning true, false, or an indeterminate state if macros are missing.
 
-If any macro expansion required to evaluate a Condition is partial (e.g., due to missing macro or environment values), the evaluation result SHALL be indeterminate (unknown).
+If any macro expansion required to evaluate a Condition yields an ExpansionResult with Status `PartiallyExpanded` (e.g., due to missing macro or environment values), the evaluation result SHALL be indeterminate (unknown).
 
 #### Scenario: Evaluating a condition missing a macro
 - **WHEN** a Condition depends on the macro `${unknownMacro}` and the context does not contain it
