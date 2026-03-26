@@ -72,12 +72,16 @@ Notes:
 
 - [ ] 6.1 **RED**: In a new `tests/PresetsGraph/InheritanceGraphTests.cpp`, write a failing test for adding a `PresetPayload`.
 - [ ] 6.2 **GREEN**: Implement `PresetInheritanceGraph` and node addition to pass the test.
-- [ ] 6.3 **RED**: Add a failing test for tracking a preset's status as `Enabled` when its condition evaluates to true.
+- [ ] 6.3 **RED**: Add a failing test for tracking a preset's availability as `Active` when its condition evaluates to true and it is not hidden.
 - [ ] 6.4 **GREEN**: Implement the condition evaluation logic to pass the test.
 - [ ] 6.5 **RED**: Add a failing test for resolving an inheritance link between two presets.
 - [ ] 6.6 **GREEN**: Implement the inheritance resolution logic to pass the test.
 - [ ] 6.7 **RED**: Add a failing test for computing an `Unresolved` state when a condition cannot be evaluated.
 - [ ] 6.8 **GREEN**: Implement the graph state computation logic to pass the test.
+- [ ] 6.8a **RED**: Add a failing test verifying that a hidden preset is reported as Hidden.
+- [ ] 6.8b **GREEN**: Implement hidden availability handling.
+- [ ] 6.8c **RED**: Add a failing test verifying that a preset containing `$vendor{...}` is reported as Disabled.
+- [ ] 6.8d **GREEN**: Implement vendor-macro disable handling.
 - [ ] 6.9 **RED**: Add a failing test verifying that a cyclic `inherits` relationship is detected and marks affected presets as Unresolved with reason `InheritanceCycle`.
 - [ ] 6.10 **GREEN**: Implement inheritance cycle detection to pass the test.
 - [ ] 6.11 **REFACTOR**: Review `PresetInheritanceGraph`.
@@ -116,6 +120,18 @@ Notes:
 - [ ] 7.2f **GREEN**: Implement invalid JSON handling to pass the test.
 - [ ] 7.2g **RED**: Add a failing test verifying that a relative include path is resolved relative to the including preset file path.
 - [ ] 7.2h **GREEN**: Implement relative include path resolution to pass the test.
+- [ ] 7.2i **RED**: Add a failing test verifying that `${fileDir}` is populated for include resolution and expands correctly.
+- [ ] 7.2j **GREEN**: Implement `${fileDir}` injection for include resolution to pass the test.
+- [ ] 7.2k **RED**: Add a failing test verifying that `${dollar}` is populated and expands to a literal `$`.
+- [ ] 7.2l **GREEN**: Implement `${dollar}` injection to pass the test.
+- [ ] 7.2m **RED**: Add a failing test verifying that when simulated CMake is too old for `cmakeMinimumRequired`, the file node is marked Unresolved with reason `CMakeMinimumRequiredNotMet`.
+- [ ] 7.2n **GREEN**: Implement `cmakeMinimumRequired` enforcement to pass the test.
+- [ ] 7.2o **RED**: Add a failing test verifying that when a file declares a preset file `version` unsupported by the simulated CMake version, the file node is marked Unresolved with reason `PresetVersionUnsupported`.
+- [ ] 7.2p **GREEN**: Implement preset file version support validation to pass the test.
+- [ ] 7.2q **RED**: Add a failing test verifying that when a file has no root `version` field, the file node is marked Unresolved with reason `PresetVersionMissing` and its includes are not processed.
+- [ ] 7.2r **GREEN**: Implement missing-version handling to pass the test.
+- [ ] 7.2s **RED**: Add a failing test verifying that when a file declares `version` < 4 and specifies `include`, the file node is marked Unresolved with reason `IncludeFieldUnsupportedInPresetVersion`.
+- [ ] 7.2t **GREEN**: Implement include-field version enforcement to pass the test.
 - [ ] 7.3 **RED**: Add a failing test that constructs a cyclic include dependency that the manager must detect.
 - [ ] 7.4 **GREEN**: Implement the include cycle detection within the resolution loop and mark Unresolved with reason `IncludeCycle`.
 - [ ] 7.5 **RED**: Add a failing test verifying the composite `Unresolved` state when the include graph is `Resolved` but the inheritance graph is `Unresolved`.

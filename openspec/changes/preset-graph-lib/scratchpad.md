@@ -22,19 +22,45 @@ Last updated: 2026-03-26
 - Include path resolution: relative include paths are resolved relative to the directory of the including presets file.
 - Missing include files: non-fatal; keep a File node and mark it Unresolved with reason `FileDoesNotExist`.
 - Invalid JSON: non-fatal; keep a File node and mark it Unresolved with reason `InvalidJson`.
-- UnresolvedReason: at least `FileDoesNotExist`, `InvalidJson`, `MissingMacro`, `UnsupportedMacro`, `EnvironmentCycle`, `IncludeCycle`, `InheritanceCycle`.
+- UnresolvedReason: at least `FileDoesNotExist`, `InvalidJson`, `MissingMacro`, `UnsupportedMacro`, `EnvironmentCycle`, `IncludeCycle`, `InheritanceCycle`, `CMakeMinimumRequiredNotMet`, `PresetVersionUnsupported`, `PresetVersionMissing`, `IncludeFieldUnsupportedInPresetVersion`.
 - MacroContext does NOT read the actual process environment.
   - The caller provides both the preset environment map and the parent/process environment map.
 - `$env{NAME}` / `$penv{NAME}` behavior:
   - If missing, they remain unresolved (macro text remains), not replaced with an empty string.
   - `$env{}` prefers the preset environment map over the parent environment map.
   - `$penv{}` uses only the parent environment map.
-- Builtin/system macros (e.g. `${sourceDir}`, `${hostSystemName}`) do not need to be resolved by this library.
-  - If desired, such values must be provided explicitly in MacroContext.
+
+- Deviation from CMake:
+  - CMake treats missing `$env{NAME}` / `$penv{NAME}` as an empty string; this library keeps them unresolved so the UI can surface them.
+
+- Host/system-provided macros:
+  - The library does not query the host system to populate macros like `${hostSystemName}`.
+  - If the caller provides `${sourceDir}`, the manager can derive `${sourceParentDir}` and `${sourceDirName}`.
 
 - Preset-associated builtin macros:
   - The graph manager may dynamically populate MacroContext with known preset-associated values during traversal/resolution.
   - Example: `${presetName}` (and other preset-derived values) can be injected from the active preset and its inheritance chain.
+
+- File-associated macros:
+  - The graph manager injects file-derived values such as `${fileDir}`.
+  - The graph manager injects constant macros such as `${dollar}`.
+
+- Preset availability:
+  - Presets track availability as Active/Hidden/Disabled/Unknown.
+  - Presets containing `$vendor{...}` are Disabled.
+
+- Root-level/file metadata:
+  - Root `version` and `cmakeMinimumRequired` are fields, not macros.
+  - Each file node has a preset file `version` field and may have a `cmakeMinimumRequired` constraint.
+  - The graph manager is configured with a simulated CMake version.
+  - The graph manager computes the maximum supported preset file `version` for the simulated CMake version.
+  - The manager validates:
+    - missing root `version` => `PresetVersionMissing` (do not process includes/presets)
+    - unsupported preset file `version` => `PresetVersionUnsupported`
+    - include used with `version` < 4 => `IncludeFieldUnsupportedInPresetVersion`
+    - `cmakeMinimumRequired` not satisfied => `CMakeMinimumRequiredNotMet`
+
+  - Observed behavior (local CMake): a top-level `CMakePresets.json` missing root `version` errors even if an included file has a valid `version`.
 
 - Environment expansion (Option A):
   - The library resolves `environment` map values (which may reference each other) with cycle detection.
@@ -48,6 +74,11 @@ Last updated: 2026-03-26
   - Established file loader abstraction + nlohmann/json parsing contract.
   - Non-fatal missing/invalid files produce Unresolved file nodes.
   - Relative include semantics clarified.
+  - Root-level validation matches local CMake behavior:
+    - missing root `version` => `PresetVersionMissing` and do not process includes/presets
+    - include used with `version` < 4 => `IncludeFieldUnsupportedInPresetVersion`
+    - preset file `version` not supported by simulated CMake => `PresetVersionUnsupported`
+    - `cmakeMinimumRequired` not satisfied => `CMakeMinimumRequiredNotMet`
 - Artifacts touched:
   - `openspec/changes/preset-graph-lib/specs/preset-file-loader/spec.md`
   - `openspec/changes/preset-graph-lib/specs/preset-graph-manager/spec.md`
@@ -66,16 +97,14 @@ Last updated: 2026-03-26
   - `openspec/changes/preset-graph-lib/tasks.md`
 
 ### P0: Preset model + inheritance resolution (hybrid)
-- Status: Needs refinement
-- Requirements to capture:
-  - Differentiate preset types: ConfigurePreset, BuildPreset, TestPreset, PackagePreset, WorkflowPreset, derived from a base Preset.
-  - Each preset stores BOTH:
-    - Original/raw JSON fields (as read)
-    - Macro-expanded view of macro-expandable string fields
-  - Inheritance precedence: earlier entries in `inherits` win for conflicting scalar fields.
-  - Environment merge semantics differ (union + null removal + macro rules; cycle constraints).
-  - Preset-associated macro injection at least for `${presetName}`, and `${generator}` where applicable.
-  - Build/Test/Package `inheritConfigureEnvironment` merge behavior for effective environment.
+- Status: Consistent
+- Notes:
+  - Preset types: Configure/Build/Test/Package/Workflow.
+  - Raw JSON retained plus expanded view for macro-expandable fields used by the library.
+  - Inheritance precedence: earlier `inherits` entries win scalar conflicts.
+  - Environment merge semantics: union + `null` removal, with `inheritConfigureEnvironment` ordering.
+  - Preset-specific macros supported: `${presetName}`, `${generator}`.
+  - Environment values expand with cycle detection (`EnvironmentCycle`).
 - Artifacts touched:
   - `openspec/changes/preset-graph-lib/specs/preset-model/spec.md`
   - `openspec/changes/preset-graph-lib/tasks.md`
@@ -96,14 +125,10 @@ Last updated: 2026-03-26
   - Single C++ library `NhcPresetGraph` implements the sub-capabilities as internal modules.
 
 ### P2: Spec format consistency
-- Status: Open
+- Status: Consistent
 - Notes:
-  - New specs currently use `## ADDED Requirements`. Repo-wide conventions may prefer `## Requirements`.
+  - OpenSpec change specs use delta headers (e.g., `## ADDED Requirements`) by design.
 
 ## Open Questions (Need Clarification)
 
-- Include macro policy in this library:
-  - Which system-provided macros (e.g., `${fileDir}`, `${sourceDir}`, `${hostSystemName}`, `${pathListSep}`) will the graph manager populate into MacroContext (if any)?
-  - For preset files version 9+, do we treat these macros as supported (when provided) or as `UnsupportedMacro`?
-- Preset-associated macro injection:
-  - Beyond `${presetName}`, which preset-derived values MUST be injected (e.g., `${generator}` for configure and for build/test via `configurePreset`)?
+(None currently)

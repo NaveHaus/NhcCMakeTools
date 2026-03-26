@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Preset Payload Management
-The Inheritance Graph SHALL store Preset payloads containing a preset name, an optional Condition AST, and a list of pending (unresolved) inheritance strings.
+The Inheritance Graph SHALL store Preset payloads containing a preset name, a hidden flag, an optional Condition AST, and a list of pending (unresolved) inheritance strings.
 
 #### Scenario: Adding a preset payload
 - **WHEN** a Preset payload with name "debug" and pending inherit "base" is added
@@ -23,14 +23,35 @@ The Inheritance Graph SHALL detect cycles in preset inheritance links.
 - **AND** the Inheritance Graph state is Unresolved
 
 ### Requirement: Condition Status Tracking
-The Inheritance Graph SHALL evaluate the Condition AST of each Preset payload using a provided Macro Context and track the resulting status (Enabled, Disabled, or Unknown).
+The Inheritance Graph SHALL evaluate the Condition AST of each Preset payload using a provided Macro Context.
 
-#### Scenario: Evaluating an enabled condition
-- **WHEN** a Preset's condition evaluates to true against the context
-- **THEN** the Inheritance Graph reports the Preset's status as Enabled
+The Inheritance Graph SHALL track a Preset availability status with at least:
+- Active
+- Hidden
+- Disabled
+- Unknown
+
+The availability status SHALL be computed as follows:
+- If the Preset is hidden, it is Hidden.
+- Else, if the Preset uses `$vendor{...}` macros, it is Disabled.
+- Else, if the condition evaluates to false, it is Disabled.
+- Else, if the condition is indeterminate (unknown), it is Unknown.
+- Else, it is Active.
+
+#### Scenario: Evaluating an active preset condition
+- **WHEN** a Preset's condition evaluates to true against the context and it is not hidden
+- **THEN** the Inheritance Graph reports the Preset's availability as Active
+
+#### Scenario: Hidden preset is not active
+- **WHEN** a Preset is marked hidden
+- **THEN** the Inheritance Graph reports the Preset's availability as Hidden
+
+#### Scenario: Preset using vendor macro is disabled
+- **WHEN** a Preset contains a string value using `$vendor{someMacro}`
+- **THEN** the Inheritance Graph reports the Preset's availability as Disabled
 
 ### Requirement: Structural State Computation
-The Inheritance Graph SHALL compute its state: Empty (no nodes), Resolved (all inherits resolved AND all conditions evaluate to definitively true/false), or Unresolved (missing inherit targets OR conditions return unknown due to missing macros).
+The Inheritance Graph SHALL compute its state: Empty (no nodes), Resolved (all inherits resolved AND all Preset availabilities are definitively Active/Hidden/Disabled), or Unresolved (missing inherit targets OR one or more Presets are Unknown due to missing macros or environment values).
 
 #### Scenario: Computing Unresolved state due to conditions
 - **WHEN** all inheritance links are resolved but one Preset's condition depends on a missing macro

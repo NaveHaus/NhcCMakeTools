@@ -1,15 +1,20 @@
 ## ADDED Requirements
 
 ### Requirement: File Payload Management
-The Include Graph SHALL store File payloads containing a file path, a list of pending (unresolved) include strings, and a resolution status.
+The Include Graph SHALL store File payloads containing:
+- A file path
+- An optional preset file version
+- An optional `cmakeMinimumRequired` version
+- A list of pending (unresolved) include strings
+- A resolution status
 
 #### Scenario: Adding a file payload
-- **WHEN** a File payload with path "CMakePresets.json" and pending include "d/e/linux-presets.json" is added
+- **WHEN** a File payload with path "CMakePresets.json" and version 10 and pending include "d/e/linux-presets.json" is added
 - **THEN** it receives a Node ID and can be retrieved by that ID
 
 ### Requirement: Unresolved Reason Tracking
 The Include Graph SHALL support marking a file node as Unresolved with an UnresolvedReason.
-The UnresolvedReason enumeration SHALL include at least: `FileDoesNotExist`, `InvalidJson`, `MissingMacro`, `UnsupportedMacro`, `EnvironmentCycle`, `IncludeCycle`, and `InheritanceCycle`.
+The UnresolvedReason enumeration SHALL include at least: `FileDoesNotExist`, `InvalidJson`, `MissingMacro`, `UnsupportedMacro`, `EnvironmentCycle`, `IncludeCycle`, `InheritanceCycle`, `CMakeMinimumRequiredNotMet`, `PresetVersionUnsupported`, `PresetVersionMissing`, and `IncludeFieldUnsupportedInPresetVersion`.
 
 #### Scenario: Marking a file node as missing
 - **WHEN** a file node is created for a file path that cannot be loaded
@@ -25,7 +30,7 @@ When an include string expands to a relative path, it SHALL be interpreted relat
 
 The Include Graph SHALL apply include-macro restrictions based on the preset file version:
 - For version 7 and 8 files, include strings SHALL support `$penv{}` macro expansion only.
-- For version 9 and above files, include strings MAY use other macros per the CMake preset specification.
+- For version 9 and above files, include strings SHALL support `$penv{}` and non-preset-specific `${...}` macros.
 - For all versions, include strings SHALL NOT use `$env{}` or preset-specific macros such as `${presetName}` and `${generator}`.
 
 If an include string uses a disallowed macro, the Include Graph SHALL mark the including file node as Unresolved with reason `UnsupportedMacro`.
@@ -33,6 +38,10 @@ If an include string uses a disallowed macro, the Include Graph SHALL mark the i
 #### Scenario: Include uses a disallowed macro
 - **WHEN** a file node has an include string using `$env{HOME}`
 - **THEN** the file node is marked Unresolved with reason `UnsupportedMacro`
+
+#### Scenario: Include uses a file-derived macro
+- **WHEN** a file node at "./a/b/c/CMakePresets.json" has an include string "${fileDir}/d/e/linux-presets.json"
+- **THEN** the include can expand to "./a/b/c/d/e/linux-presets.json" when `${fileDir}` is provided
 
 #### Scenario: Resolving includes with complete context
 - **WHEN** an include string "d/e/linux-presets.json" expands to a file path that exists in the graph

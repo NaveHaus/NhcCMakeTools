@@ -24,7 +24,15 @@ The system SHALL support expanding the following macro syntaxes in strings:
 - **WHEN** a string "a-${presetName}-b-$env{X}-c-$penv{Y}" is expanded with context {"presetName": "p"}, preset environment {"X": "x"}, and parent environment {"Y": "y"}
 - **THEN** the result is "a-p-b-x-c-y"
 
-The system SHALL NOT implicitly populate system-provided CMake macros (e.g., `${sourceDir}` and `${hostSystemName}`). If such macros are to be expanded, they SHALL be provided explicitly by the caller via the macro map.
+Macro values in the Macro Context SHALL be populated explicitly either by the caller or by the graph manager (when values can be derived from known preset and file state).
+
+The system SHALL NOT read from the host system to implicitly populate macros like `${sourceDir}` and `${hostSystemName}`. If such macros are to be expanded, they SHALL be provided explicitly by the caller via the macro map.
+
+#### Scenario: Graph manager injects derived macros
+- **GIVEN** a file node "./a/b/c/CMakePresets.json"
+- **AND** a preset "p" belonging to that file
+- **WHEN** the graph manager resolves fields within that file and preset
+- **THEN** it can inject `${fileDir}` as "./a/b/c" and `${presetName}` as "p" into the Macro Context
 
 ### Requirement: Environment Macro Expansion
 When expanding `$env{variableName}`, the system SHALL resolve the value in this order:

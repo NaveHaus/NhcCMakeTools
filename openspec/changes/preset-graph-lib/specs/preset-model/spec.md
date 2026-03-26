@@ -64,6 +64,18 @@ If the effective generator is not known, `${generator}` SHALL remain unresolved.
 - **WHEN** a field belonging to BuildPreset "bld" is expanded
 - **THEN** `${generator}` expands to "Ninja"
 
+### Requirement: Preset-Specific Macro Support
+The system SHALL support all macros documented as "preset-specific" in the CMake presets specification.
+
+At minimum, the system SHALL support:
+- `${presetName}`
+- `${generator}`
+
+#### Scenario: Expanding all supported preset-specific macros
+- **GIVEN** a ConfigurePreset named "cfg" with generator "Ninja"
+- **WHEN** a string "${presetName}-${generator}" is expanded for that preset
+- **THEN** the result is "cfg-Ninja"
+
 ### Requirement: Inheritance Precedence
 When a preset inherits from multiple parent presets, and two parents provide conflicting values for the same scalar field, the earlier preset in the `inherits` list SHALL take precedence.
 

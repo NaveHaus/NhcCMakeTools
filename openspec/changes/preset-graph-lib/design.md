@@ -1,6 +1,6 @@
 ## Context
 
-The NhcCMakeTools project needs to visualize and interactively manipulate CMake preset collections. CMake presets are defined across multiple JSON files using `include` statements, and individual presets inherit from each other using `inherits` lists. Both the file inclusions and preset definitions can utilize CMake macros (e.g., `${presetName}`, `$env{FOO}`) which dictates their validity and structure. Furthermore, presets can have complex `condition` objects that determine if they are enabled or disabled, and these conditions can also contain macros. 
+The NhcCMakeTools project needs to visualize and interactively manipulate CMake preset collections. CMake presets are defined across multiple JSON files using `include` statements, and individual presets inherit from each other using `inherits` lists. Both the file inclusions and preset definitions can utilize CMake macros (e.g., `${presetName}`, `$env{FOO}`) which dictates their validity and structure. Furthermore, presets can have complex `condition` objects that determine preset availability (Active/Hidden/Disabled/Unknown), and these conditions can also contain macros.
 
 To build an interactive UI, we need a data structure that can parse the raw, unexpanded presets and dynamically re-evaluate their logical structure as the user changes macro values.
 
@@ -11,7 +11,7 @@ To build an interactive UI, we need a data structure that can parse the raw, une
 - Accurately represent the constraints of the CMake specification (e.g., uniqueness of names, specific macro rules).
 - Allow dynamic re-evaluation of the graph structure based on a mutable "macro context".
 - Clearly distinguish between the structural state of the graph (topology) and the data within the nodes.
-- Expose clear APIs to query the state of nodes (e.g., Enabled vs Disabled based on conditions) for UI rendering.
+- Expose clear APIs to query node states for UI rendering (e.g., availability Active/Hidden/Disabled/Unknown and per-node diagnostics).
 
 **Non-Goals:**
 - Writing or serializing JSON files back to disk (this is a read/evaluate library).
@@ -41,7 +41,7 @@ To build an interactive UI, we need a data structure that can parse the raw, une
 **Alternatives Considered**: Flattening conditions into a list. Rejected because CMake conditions inherently support nested boolean logic (`anyOf`, `allOf`, `not`).
 
 ### 5. Retaining "Disabled" Nodes
-**Decision**: Presets that evaluate to `false` based on their `condition` are kept in the graph but marked with a `Disabled` status.
+**Decision**: Presets that are not available (e.g., condition evaluates to `false` or the preset uses `$vendor{...}`) are kept in the graph but marked with `Disabled` availability.
 **Rationale**: In an interactive UI, a user might change a macro that causes a condition to switch from `false` to `true`. If the node was pruned from the graph, it would abruptly pop into existence. By keeping it but marking it `Disabled`, the UI can choose to render it as grayed-out, providing better feedback to the user.
 
 ### 6. Graceful Partial Macro Expansion
@@ -65,6 +65,19 @@ To build an interactive UI, we need a data structure that can parse the raw, une
 - `$env{}` and `$penv{}` do not read the actual process environment. The parent/process environment is provided explicitly via `MacroContext`.
 - The graph manager MAY inject preset-associated values into `MacroContext` during traversal (e.g., `${presetName}` for the active preset).
 
+**Preset File Version Policy (v1)**:
+- The graph manager is configured with a simulated CMake version.
+- The graph manager computes the maximum supported preset file `version` from the simulated CMake version.
+- Files with an unsupported preset file `version` are retained as Unresolved with reason `PresetVersionUnsupported`.
+
+**Derived Macro Policy (v1)**:
+- The graph manager SHALL inject macro values that are derivable from the current graph state.
+  - File-derived example: `${fileDir}` from the including file node.
+  - Preset-derived example: `${presetName}` from the active preset.
+  - Constant example: `${dollar}`.
+- The graph manager SHALL NOT query the host system to populate macros such as `${hostSystemName}`.
+- If the caller provides `${sourceDir}`, the graph manager MAY derive `${sourceParentDir}` and `${sourceDirName}`.
+
 ### 8. Non-Fatal Resolution Diagnostics
 **Decision**: Missing include files and invalid JSON are non-fatal resolution outcomes. They do not cause the graph manager to throw or abort the full apply-context operation. Instead, the corresponding file node is retained in the Include Graph and marked `Unresolved` with an `UnresolvedReason`.
 **Rationale**: In interactive use, users frequently edit presets and file layouts. Retaining missing/invalid nodes gives the UI a stable structure to render with actionable diagnostics, and allows resolution to complete for other independent branches of the include tree.
@@ -76,6 +89,10 @@ To build an interactive UI, we need a data structure that can parse the raw, une
 - `EnvironmentCycle`: Environment values contain a reference cycle.
 - `IncludeCycle`: Preset files contain an include cycle.
 - `InheritanceCycle`: Presets contain an inheritance cycle.
+- `CMakeMinimumRequiredNotMet`: A preset file requires a newer CMake than the simulated version.
+- `PresetVersionUnsupported`: A preset file uses a format `version` not supported by the simulated CMake version.
+- `PresetVersionMissing`: A preset file does not specify a required root `version` field.
+- `IncludeFieldUnsupportedInPresetVersion`: A preset file uses `include` but its `version` is less than 4.
 
 ## Risks / Trade-offs
 
