@@ -28,12 +28,18 @@ To build an interactive UI, we need a data structure that can parse the raw, une
 ### 2. Separation of Topology from Payload
 **Decision**: Base graph data structures will use standard graph theory representations (Nodes identified by `unsigned int` IDs, Edges managed by the graph as ID pairs). The actual file/preset data will be stored as payloads associated with these IDs.
 **Rationale**: CMake allows cyclic dependencies in theory (though they are invalid), and users might type them in. By managing edges purely as integer pairs, we can implement standard cycle detection and topological sorting algorithms without polluting the business logic objects. It also prevents object pointer invalidation issues during graph recomputations.
+**Alternatives Considered**:
+- Storing payload objects directly inside node structures. Rejected because it couples graph algorithms to business object lifetimes and makes incremental recomputation harder.
+- Storing raw pointers/references to payload objects in edges/nodes. Rejected because it complicates ownership and invalidation when graphs are rebuilt.
 
 ### 3. "Structural" vs "Cosmetic" State
 **Decision**: The "State" of the graphs (`Empty`, `Unresolved`, `Resolved`) will reflect ONLY the structural topology of the graphs, not the resolution of every single macro in every variable.
 **Rationale**: The UI needs to know if it has the complete picture. If an `include` path cannot be expanded, the graph is structurally `Unresolved` because we might be missing nodes. However, if a preset's environment variable macro isn't expanded, the structure is fine, it's just a cosmetic evaluation issue for that specific node. 
 - `PresetIncludeGraph` is Resolved when all `include` paths are fully expanded.
 - `PresetInheritanceGraph` is Resolved when all `inherits` names point to known presets AND all `condition` objects can be evaluated.
+**Alternatives Considered**:
+- A single global "resolved" flag that requires all macros everywhere to be fully expanded. Rejected because it makes the UI unusable during incremental edits.
+- Maintaining separate per-node resolution state only, without a graph-level state. Rejected because the UI still needs a coarse structural readiness signal.
 
 ### 4. Condition Abstract Syntax Tree (AST)
 **Decision**: CMake preset `condition` objects will be parsed into an AST where each node represents a condition type (e.g., `Equals`, `AllOf`, `InList`). The AST nodes will provide an `Evaluate(MacroContext)` method.
@@ -43,10 +49,16 @@ To build an interactive UI, we need a data structure that can parse the raw, une
 ### 5. Retaining "Disabled" Nodes
 **Decision**: Presets that are not available (e.g., condition evaluates to `false` or the preset uses `$vendor{...}`) are kept in the graph but marked with `Disabled` availability.
 **Rationale**: In an interactive UI, a user might change a macro that causes a condition to switch from `false` to `true`. If the node was pruned from the graph, it would abruptly pop into existence. By keeping it but marking it `Disabled`, the UI can choose to render it as grayed-out, providing better feedback to the user.
+**Alternatives Considered**:
+- Pruning disabled presets from the graph. Rejected because it causes unstable UI topology as availability changes.
+- Keeping disabled presets but dropping their edges. Rejected because it hides inheritance/include relationships that the UI may still want to visualize.
 
 ### 6. Graceful Partial Macro Expansion
 **Decision**: When expanding a string containing macros, missing macros will result in a partially expanded string (or an indicator of partial expansion) rather than throwing an error or failing completely.
 **Rationale**: Because graph resolution is an iterative, interactive process driven by user input, it is completely normal and expected for macros to be temporarily missing. Treating partial expansion as a failure would break the iterative resolution strategy. Instead, a partially expanded string naturally causes the dependent node to remain in an `Unresolved` state until the user provides the necessary macro.
+**Alternatives Considered**:
+- Treating missing macros as hard errors. Rejected because it prevents iterative resolution and blocks UI feedback.
+- Substituting missing macros with empty strings. Rejected because it hides missing inputs and makes diagnostics ambiguous.
 
 **Deviation from CMake**: CMake specifies that missing `$env{NAME}` / `$penv{NAME}` references evaluate to an empty string. This library keeps missing references unresolved so the UI can surface them and the user can explicitly decide whether an empty string is intended.
 
@@ -81,6 +93,9 @@ To build an interactive UI, we need a data structure that can parse the raw, une
 ### 8. Non-Fatal Resolution Diagnostics
 **Decision**: Missing include files and invalid JSON are non-fatal resolution outcomes. They do not cause the graph manager to throw or abort the full apply-context operation. Instead, the corresponding file node is retained in the Include Graph and marked `Unresolved` with an `UnresolvedReason`.
 **Rationale**: In interactive use, users frequently edit presets and file layouts. Retaining missing/invalid nodes gives the UI a stable structure to render with actionable diagnostics, and allows resolution to complete for other independent branches of the include tree.
+**Alternatives Considered**:
+- Aborting resolution on the first error. Rejected because it prevents partial visualization and reduces actionable feedback.
+- Throwing exceptions for missing files/invalid JSON. Rejected because the common UI workflow is exploratory and expects non-fatal diagnostics.
 **UnresolvedReason (initial set)**:
 - `FileDoesNotExist`: The file loader could not find the file.
 - `InvalidJson`: The file content could not be parsed as JSON.

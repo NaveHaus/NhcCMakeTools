@@ -31,7 +31,7 @@ Last updated: 2026-03-26
 ### P0: preset-model capability missing from scope artifacts
 - Status: Consistent
 - Notes:
-  - `tasks.md` and `specs/preset-model/spec.md` define a preset-model module, but `proposal.md` and `design.md` do not mention it.
+  - Resolved: `proposal.md` lists `preset-model` and `design.md` includes a dedicated Preset Model decision.
 - Artifacts touched:
   - `openspec/changes/preset-graph-lib/proposal.md`
   - `openspec/changes/preset-graph-lib/design.md`
@@ -39,17 +39,24 @@ Last updated: 2026-03-26
 ### P0: test registration tasks missing required CMake steps
 - Status: Consistent
 - Notes:
-  - `tasks.md` creates tests but does not include `tests/PresetsGraph/CMakeLists.txt` setup or `nhc_add_test_executable()` registration steps required by `AGENTS.md`.
+  - Resolved: `tasks.md` includes explicit tasks for `tests/PresetsGraph/CMakeLists.txt` and wiring it into the parent tests CMake configuration.
 - Artifacts touched:
   - `openspec/changes/preset-graph-lib/tasks.md`
 
 ### P1: include-macro allowance is underspecified
 - Status: Consistent
 - Notes:
-  - `specs/preset-include-graph/spec.md` permits non-preset `${...}` macros for v9+ but does not define the allowlist or rejection criteria.
+  - Resolved: `specs/preset-include-graph/spec.md` defines v7/v8 vs v9+ allow/reject rules, plus MissingMacro vs UnsupportedMacro behavior.
 - Artifacts touched:
   - `openspec/changes/preset-graph-lib/specs/preset-include-graph/spec.md`
   - `openspec/changes/preset-graph-lib/specs/preset-macro-context/spec.md`
+
+### P1: design decisions missing alternatives
+- Status: Consistent
+- Notes:
+  - Resolved: Decisions 2, 3, 5, 6, 8 now include explicit Alternatives Considered.
+- Artifacts touched:
+  - `openspec/changes/preset-graph-lib/design.md`
 
 ### P2: partial expansion reporting is non-testable
 - Status: Needs refinement
@@ -58,13 +65,6 @@ Last updated: 2026-03-26
 - Artifacts touched:
   - `openspec/changes/preset-graph-lib/specs/preset-macro-context/spec.md`
   - `openspec/changes/preset-graph-lib/specs/preset-condition-ast/spec.md`
-
-### P1: design decisions missing alternatives
-- Status: Needs refinement
-- Notes:
-  - Decisions 2, 3, 5, 6, 8 lack explicit alternatives or rationale for not considering alternatives.
-- Artifacts touched:
-  - `openspec/changes/preset-graph-lib/design.md`
 
 ## Open Questions (Need Clarification)
 - (None)
