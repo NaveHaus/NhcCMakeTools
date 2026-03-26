@@ -29,7 +29,7 @@ Last updated: 2026-03-26
 ## Issue List
 
 ### P0: preset-model capability missing from scope artifacts
-- Status: Open
+- Status: Consistent
 - Notes:
   - `tasks.md` and `specs/preset-model/spec.md` define a preset-model module, but `proposal.md` and `design.md` do not mention it.
 - Artifacts touched:

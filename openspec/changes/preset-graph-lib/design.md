@@ -94,6 +94,11 @@ To build an interactive UI, we need a data structure that can parse the raw, une
 - `PresetVersionMissing`: A preset file does not specify a required root `version` field.
 - `IncludeFieldUnsupportedInPresetVersion`: A preset file uses `include` but its `version` is less than 4.
 
+### 9. Preset Model Layer
+**Decision**: Introduce a typed preset model (`PresetModel`) that separates raw JSON from expanded values and provides inheritance/merge semantics used by the graphs.
+**Rationale**: The graphs need consistent access to minimal typed fields (name, inherits, condition, environment) and deterministic inheritance semantics. Centralizing this in a preset model keeps graph logic focused on topology while still supporting macro expansion and raw/expanded views.
+**Alternatives Considered**: Directly parsing raw JSON within the graphs. Rejected because it duplicates parsing/merge logic across graphs and obscures macro-expansion responsibilities.
+
 ## Risks / Trade-offs
 
 - **Risk**: Infinite loops during dynamic discovery. If a user sets a macro that causes an `include` path to point to a file we've already loaded, which points back to the first file, we could get stuck.
