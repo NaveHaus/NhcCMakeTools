@@ -4,7 +4,7 @@ The NhcCMakeTools project requires a robust mechanism for visualizing and intera
 
 ## What Changes
 
-- Introduce a new C++ library (`nhc-preset-graph`) for modeling CMake presets as graphs.
+- Introduce a new C++ library (`NhcPresetGraph`) for modeling CMake presets as graphs.
 - Establish core graph theory abstractions (Nodes, Edges, Graphs) tailored for preset data.
 - Implement independent DAG models for `include` relationships and `inherits` relationships.
 - Implement a macro context system to dynamically evaluate macro expressions.
@@ -22,6 +22,8 @@ The NhcCMakeTools project requires a robust mechanism for visualizing and intera
 - `preset-include-graph`: Graph model specifically for file `include` relationships.
 - `preset-inheritance-graph`: Graph model specifically for preset `inherits` relationships.
 - `preset-graph-manager`: The composite manager that drives graph state resolution.
+
+These capabilities are implemented as modules within the `NhcPresetGraph` library.
 
 ### Modified Capabilities
 

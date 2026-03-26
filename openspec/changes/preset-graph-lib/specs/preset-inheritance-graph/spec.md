@@ -14,6 +14,14 @@ The Inheritance Graph SHALL attempt to resolve all pending inheritance strings b
 - **WHEN** a payload "debug" inherits "base", and a payload "base" exists in the graph
 - **THEN** the pending inherit is removed and a directed edge is created from "debug" to "base"
 
+### Requirement: Inheritance Cycle Detection
+The Inheritance Graph SHALL detect cycles in preset inheritance links.
+
+#### Scenario: Detecting a cyclic inherits relationship
+- **WHEN** inheritance links create a cycle (e.g., A inherits B and B inherits A)
+- **THEN** the Inheritance Graph marks affected presets as Unresolved with reason `InheritanceCycle`
+- **AND** the Inheritance Graph state is Unresolved
+
 ### Requirement: Condition Status Tracking
 The Inheritance Graph SHALL evaluate the Condition AST of each Preset payload using a provided Macro Context and track the resulting status (Enabled, Disabled, or Unknown).
 

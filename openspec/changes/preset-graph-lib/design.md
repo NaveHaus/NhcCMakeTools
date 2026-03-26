@@ -48,6 +48,8 @@ To build an interactive UI, we need a data structure that can parse the raw, une
 **Decision**: When expanding a string containing macros, missing macros will result in a partially expanded string (or an indicator of partial expansion) rather than throwing an error or failing completely.
 **Rationale**: Because graph resolution is an iterative, interactive process driven by user input, it is completely normal and expected for macros to be temporarily missing. Treating partial expansion as a failure would break the iterative resolution strategy. Instead, a partially expanded string naturally causes the dependent node to remain in an `Unresolved` state until the user provides the necessary macro.
 
+**Deviation from CMake**: CMake specifies that missing `$env{NAME}` / `$penv{NAME}` references evaluate to an empty string. This library keeps missing references unresolved so the UI can surface them and the user can explicitly decide whether an empty string is intended.
+
 ### 7. File Loader Abstraction + nlohmann/json
 **Decision**: The `PresetsGraph` manager will accept an injected file loader abstraction whose responsibility is to read a preset file path and return its contents as a string. The manager will parse loaded content using `nlohmann::json::parse(...)`.
 **Rationale**: The graph manager necessarily follows `include` references to discover additional preset files. Injecting file loading keeps the manager testable and keeps file system policy (sandboxing, virtual files, in-memory fixtures) outside the core graph logic. Standardizing on `nlohmann/json` provides a widely used, vcpkg-friendly parser that can parse from `std::string`.
@@ -61,6 +63,7 @@ To build an interactive UI, we need a data structure that can parse the raw, une
 
 **Environment Policy (v1)**:
 - `$env{}` and `$penv{}` do not read the actual process environment. The parent/process environment is provided explicitly via `MacroContext`.
+- The graph manager MAY inject preset-associated values into `MacroContext` during traversal (e.g., `${presetName}` for the active preset).
 
 ### 8. Non-Fatal Resolution Diagnostics
 **Decision**: Missing include files and invalid JSON are non-fatal resolution outcomes. They do not cause the graph manager to throw or abort the full apply-context operation. Instead, the corresponding file node is retained in the Include Graph and marked `Unresolved` with an `UnresolvedReason`.
@@ -70,6 +73,9 @@ To build an interactive UI, we need a data structure that can parse the raw, une
 - `InvalidJson`: The file content could not be parsed as JSON.
 - `MissingMacro`: An include path could not be fully expanded due to missing macro or environment values.
 - `UnsupportedMacro`: A string used a macro that is disallowed by the preset specification.
+- `EnvironmentCycle`: Environment values contain a reference cycle.
+- `IncludeCycle`: Preset files contain an include cycle.
+- `InheritanceCycle`: Presets contain an inheritance cycle.
 
 ## Risks / Trade-offs
 

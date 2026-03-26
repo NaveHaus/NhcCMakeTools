@@ -8,6 +8,8 @@ The system SHALL provide a Macro Context containing:
 
 The system SHALL NOT read from the actual process environment. The "parent environment" map represents the process scope for `$env{}` and `$penv{}` expansion and SHALL be provided by the caller.
 
+The macro map in the Macro Context SHALL be caller-controlled, and the graph manager MAY populate or update it with preset-associated values during graph resolution (e.g., `${presetName}` for the active preset).
+
 #### Scenario: Storing and retrieving a macro
 - **WHEN** a macro "presetName" is set in the context
 - **THEN** querying the context for "presetName" returns the stored value

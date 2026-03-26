@@ -11,7 +11,7 @@ The Presets Graph Manager SHALL own instances of the Include Graph and the Inher
 The Presets Graph Manager SHALL orchestrate the resolution loop when a new Macro Context is applied, first resolving the Include graph, handling any newly discovered include file paths, and subsequently resolving the Inheritance graph.
 
 #### Scenario: Applying context discovers new files
-- **WHEN** context "os=windows" is applied and the Include graph discovers "windows-presets.json"
+- **WHEN** a context is applied and an include string expands to a new file path "extra-presets.json"
 - **THEN** the Manager orchestrates loading the new file, adding its nodes, and re-running resolution until no new files are found
 
 ### Requirement: File Loading and JSON Parsing
@@ -40,8 +40,8 @@ The Presets Graph Manager SHALL implement strict cycle detection during the iter
 
 #### Scenario: Detecting cyclic includes during resolution
 - **WHEN** applying a context resolves an include path to a file that was already loaded in the current resolution chain
-- **THEN** the Manager immediately halts further resolution
-- **AND** the Manager reports a structural error or marks the overall state as Unresolved
+- **THEN** the Manager marks the affected file nodes as Unresolved with reason `IncludeCycle`
+- **AND** the Manager marks the overall state as Unresolved
 
 ### Requirement: Composite State Computation
 The Presets Graph Manager SHALL compute its overall composite state based strictly on the states of its underlying Include and Inheritance graphs.
