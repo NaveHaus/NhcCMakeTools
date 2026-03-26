@@ -10,6 +10,7 @@ The NhcCMakeTools project requires a robust mechanism for visualizing and intera
 - Implement a macro context system to dynamically evaluate macro expressions.
 - Implement an Abstract Syntax Tree (AST) to evaluate CMake preset `condition` objects against a macro context.
 - Implement a composite `PresetsGraph` manager to orchestrate parsing, context application, and state computation across the two DAGs.
+- Standardize JSON parsing on `nlohmann/json` and define a file loader abstraction for loading preset files as strings.
 
 ## Capabilities
 
@@ -17,6 +18,7 @@ The NhcCMakeTools project requires a robust mechanism for visualizing and intera
 - `preset-graph-core`: Core graph theory structures (nodes, edges, DAG base).
 - `preset-macro-context`: System for expanding macros in strings.
 - `preset-condition-ast`: Parsing and evaluation of CMake preset `condition` logic.
+- `preset-file-loader`: Abstraction for loading preset files by path as strings.
 - `preset-include-graph`: Graph model specifically for file `include` relationships.
 - `preset-inheritance-graph`: Graph model specifically for preset `inherits` relationships.
 - `preset-graph-manager`: The composite manager that drives graph state resolution.
@@ -29,4 +31,4 @@ The NhcCMakeTools project requires a robust mechanism for visualizing and intera
 
 - **Code**: Adds a new C++ static library to the project workspace.
 - **APIs**: Provides a new API surface for interacting with CMake presets programmatically.
-- **Dependencies**: May require dependencies on a JSON parser (e.g., nlohmann/json or similar) to read the raw preset files.
+- **Dependencies**: Adds a dependency on `nlohmann/json` for parsing preset JSON.

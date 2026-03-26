@@ -4,14 +4,14 @@
 The system SHALL define a base Condition type capable of evaluating itself against a given Macro Context, returning true, false, or an indeterminate state if macros are missing.
 
 #### Scenario: Evaluating a condition missing a macro
-- **WHEN** a Condition depends on the macro `${compiler}` and the context does not contain it
+- **WHEN** a Condition depends on the macro `${unknownMacro}` and the context does not contain it
 - **THEN** the evaluation result is indeterminate (unknown)
 
 ### Requirement: Equality Condition
 The system SHALL support an "equals" and "notEquals" condition comparing a left-hand string and a right-hand string, both of which may contain macros.
 
 #### Scenario: Evaluating an equals condition
-- **WHEN** an "equals" condition compares "${os}" and "windows" using a context where "os" is "windows"
+- **WHEN** an "equals" condition compares "${presetName}" and "default" using a context where "presetName" is "default"
 - **THEN** the condition evaluates to true
 
 ### Requirement: Boolean Logic Conditions

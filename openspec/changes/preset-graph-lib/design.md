@@ -1,6 +1,6 @@
 ## Context
 
-The NhcCMakeTools project needs to visualize and interactively manipulate CMake preset collections. CMake presets are defined across multiple JSON files using `include` statements, and individual presets inherit from each other using `inherits` lists. Both the file inclusions and preset definitions can utilize CMake macros (e.g., `${os}`, `$env{FOO}`) which dictates their validity and structure. Furthermore, presets can have complex `condition` objects that determine if they are enabled or disabled, and these conditions can also contain macros. 
+The NhcCMakeTools project needs to visualize and interactively manipulate CMake preset collections. CMake presets are defined across multiple JSON files using `include` statements, and individual presets inherit from each other using `inherits` lists. Both the file inclusions and preset definitions can utilize CMake macros (e.g., `${presetName}`, `$env{FOO}`) which dictates their validity and structure. Furthermore, presets can have complex `condition` objects that determine if they are enabled or disabled, and these conditions can also contain macros. 
 
 To build an interactive UI, we need a data structure that can parse the raw, unexpanded presets and dynamically re-evaluate their logical structure as the user changes macro values.
 
@@ -47,6 +47,29 @@ To build an interactive UI, we need a data structure that can parse the raw, une
 ### 6. Graceful Partial Macro Expansion
 **Decision**: When expanding a string containing macros, missing macros will result in a partially expanded string (or an indicator of partial expansion) rather than throwing an error or failing completely.
 **Rationale**: Because graph resolution is an iterative, interactive process driven by user input, it is completely normal and expected for macros to be temporarily missing. Treating partial expansion as a failure would break the iterative resolution strategy. Instead, a partially expanded string naturally causes the dependent node to remain in an `Unresolved` state until the user provides the necessary macro.
+
+### 7. File Loader Abstraction + nlohmann/json
+**Decision**: The `PresetsGraph` manager will accept an injected file loader abstraction whose responsibility is to read a preset file path and return its contents as a string. The manager will parse loaded content using `nlohmann::json::parse(...)`.
+**Rationale**: The graph manager necessarily follows `include` references to discover additional preset files. Injecting file loading keeps the manager testable and keeps file system policy (sandboxing, virtual files, in-memory fixtures) outside the core graph logic. Standardizing on `nlohmann/json` provides a widely used, vcpkg-friendly parser that can parse from `std::string`.
+**Alternatives Considered**:
+- Passing pre-parsed JSON objects into the manager. Rejected because the manager must iteratively load newly discovered include files.
+- Implementing full IO and path policy inside the manager. Rejected because it complicates testing and makes sandboxed/virtual file systems difficult.
+
+**Path Resolution Policy (v1)**:
+- When an include path is relative, the manager resolves it relative to the directory of the including preset file.
+- The include graph SHOULD store normalized absolute paths for file nodes to ensure stable identity across reloads.
+
+**Environment Policy (v1)**:
+- `$env{}` and `$penv{}` do not read the actual process environment. The parent/process environment is provided explicitly via `MacroContext`.
+
+### 8. Non-Fatal Resolution Diagnostics
+**Decision**: Missing include files and invalid JSON are non-fatal resolution outcomes. They do not cause the graph manager to throw or abort the full apply-context operation. Instead, the corresponding file node is retained in the Include Graph and marked `Unresolved` with an `UnresolvedReason`.
+**Rationale**: In interactive use, users frequently edit presets and file layouts. Retaining missing/invalid nodes gives the UI a stable structure to render with actionable diagnostics, and allows resolution to complete for other independent branches of the include tree.
+**UnresolvedReason (initial set)**:
+- `FileDoesNotExist`: The file loader could not find the file.
+- `InvalidJson`: The file content could not be parsed as JSON.
+- `MissingMacro`: An include path could not be fully expanded due to missing macro or environment values.
+- `UnsupportedMacro`: A string used a macro that is disallowed by the preset specification.
 
 ## Risks / Trade-offs
 

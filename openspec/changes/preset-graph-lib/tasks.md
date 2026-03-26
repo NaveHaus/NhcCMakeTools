@@ -2,6 +2,8 @@
 
 - [ ] 1.1 Add CMake target for a static library `NhcPresetGraph`
 - [ ] 1.2 Create test directory `tests/PresetsGraph`
+- [ ] 1.3 Add `nlohmann/json` dependency for `NhcPresetGraph`
+- [ ] 1.4 Add a file loader abstraction for reading preset files as strings
 
 ## 2. preset-macro-context
 
@@ -11,7 +13,15 @@
 - [ ] 2.4 **GREEN**: Implement the expansion logic to pass the test.
 - [ ] 2.5 **RED**: Add a failing test for gracefully handling a string with an unknown macro (partial expansion).
 - [ ] 2.6 **GREEN**: Implement the partial expansion logic to pass the test.
-- [ ] 2.7 **REFACTOR**: Review `MacroContext` for clarity and correctness.
+- [ ] 2.7 **RED**: Add a failing test verifying that `$env{NAME}` prefers the preset environment value over the parent environment value.
+- [ ] 2.8 **GREEN**: Implement `$env{}` expansion logic to pass the test.
+- [ ] 2.9 **RED**: Add a failing test verifying that `$penv{NAME}` uses only the parent environment value.
+- [ ] 2.10 **GREEN**: Implement `$penv{}` expansion logic to pass the test.
+- [ ] 2.10a **RED**: Add a failing test verifying that when the MacroContext parent environment map does not contain a variable, `$penv{VAR}` remains unresolved (not replaced with an empty string).
+- [ ] 2.10b **GREEN**: Implement the missing-parent-variable behavior to pass the test.
+- [ ] 2.10c **RED**: Add a failing test verifying that when neither preset nor parent environment defines a variable, `$env{VAR}` remains unresolved (not replaced with an empty string).
+- [ ] 2.10d **GREEN**: Implement the missing-variable behavior to pass the test.
+- [ ] 2.11 **REFACTOR**: Review `MacroContext` for clarity and correctness.
 
 ## 3. preset-graph-core
 
@@ -42,6 +52,8 @@
 - [ ] 5.5 **RED**: Add a failing test for resolving a pending include into an edge when the macro context is sufficient.
 - [ ] 5.6 **GREEN**: Implement the include resolution logic to pass the test.
 - [ ] 5.7 **REFACTOR**: Review `PresetIncludeGraph`.
+- [ ] 5.8 **RED**: Add a failing test for marking a file node as Unresolved with reason `FileDoesNotExist`.
+- [ ] 5.9 **GREEN**: Implement the unresolved-reason tracking to pass the test.
 
 ## 6. preset-inheritance-graph
 
@@ -59,6 +71,14 @@
 
 - [ ] 7.1 **RED**: In a new `tests/PresetsGraph/GraphManagerTests.cpp`, write a failing test verifying that an `ApplyContext` call that discovers a new file results in a new node in the include graph.
 - [ ] 7.2 **GREEN**: Implement the `PresetsGraph` manager and the basic resolution loop to pass the test.
+- [ ] 7.2a **RED**: Add a failing test verifying that the manager uses the file loader to load a newly discovered include file and parses it with `nlohmann::json::parse(...)`.
+- [ ] 7.2b **GREEN**: Implement the file loading + JSON parsing behavior to pass the test.
+- [ ] 7.2c **RED**: Add a failing test verifying that a file loader "FileDoesNotExist" failure causes the corresponding file node to be marked Unresolved with reason `FileDoesNotExist` and that the manager state is Unresolved.
+- [ ] 7.2d **GREEN**: Implement failure handling to pass the test.
+- [ ] 7.2e **RED**: Add a failing test verifying that invalid JSON causes the corresponding file node to be marked Unresolved with reason `InvalidJson` and that the manager state is Unresolved.
+- [ ] 7.2f **GREEN**: Implement invalid JSON handling to pass the test.
+- [ ] 7.2g **RED**: Add a failing test verifying that a relative include path is resolved relative to the including preset file path.
+- [ ] 7.2h **GREEN**: Implement relative include path resolution to pass the test.
 - [ ] 7.3 **RED**: Add a failing test that constructs a cyclic include dependency that the manager must detect.
 - [ ] 7.4 **GREEN**: Implement the cycle detection within the resolution loop to pass the test.
 - [ ] 7.5 **RED**: Add a failing test verifying the composite `Unresolved` state when the include graph is `Resolved` but the inheritance graph is `Unresolved`.
