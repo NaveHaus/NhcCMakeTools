@@ -37,7 +37,7 @@ Last updated: 2026-03-26
   - `openspec/changes/preset-graph-lib/design.md`
 
 ### P0: test registration tasks missing required CMake steps
-- Status: Open
+- Status: Consistent
 - Notes:
   - `tasks.md` creates tests but does not include `tests/PresetsGraph/CMakeLists.txt` setup or `nhc_add_test_executable()` registration steps required by `AGENTS.md`.
 - Artifacts touched:

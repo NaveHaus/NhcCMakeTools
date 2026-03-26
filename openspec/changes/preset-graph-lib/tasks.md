@@ -2,8 +2,10 @@
 
 - [ ] 1.1 Add CMake target for a static library `NhcPresetGraph`
 - [ ] 1.2 Create test directory `tests/PresetsGraph`
-- [ ] 1.3 Add `nlohmann/json` dependency for `NhcPresetGraph`
-- [ ] 1.4 Add a file loader abstraction for reading preset files as strings
+- [ ] 1.3 Add `tests/PresetsGraph/CMakeLists.txt` with `nhc_add_test_executable(... USES NhcTestLib)` entries for each `*Tests.cpp`
+- [ ] 1.4 Wire `tests/PresetsGraph/CMakeLists.txt` into the parent tests CMake configuration
+- [ ] 1.5 Add `nlohmann/json` dependency for `NhcPresetGraph`
+- [ ] 1.6 Add a file loader abstraction for reading preset files as strings
 
 Notes:
 - The capabilities listed in `openspec/changes/preset-graph-lib/proposal.md` are implemented as modules within the `NhcPresetGraph` library.
