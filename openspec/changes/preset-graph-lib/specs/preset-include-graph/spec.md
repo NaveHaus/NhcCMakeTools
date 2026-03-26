@@ -28,24 +28,53 @@ The UnresolvedReason enumeration SHALL include at least: `FileDoesNotExist`, `In
 The Include Graph SHALL attempt to resolve all pending include strings on all file nodes using a provided Macro Context.
 When an include string expands to a relative path, it SHALL be interpreted relative to the directory of the including file node.
 
-The Include Graph SHALL apply include-macro restrictions based on the preset file version:
-- For version 7 and 8 files, include strings SHALL support `$penv{}` macro expansion only.
-- For version 9 and above files, include strings SHALL support `$penv{}` and non-preset-specific `${...}` macros.
-- For all versions, include strings SHALL NOT use `$env{}` or preset-specific macros such as `${presetName}` and `${generator}`.
+#### Scenario: Resolving includes with complete context
+- **WHEN** an include string "d/e/linux-presets.json" expands to a file path that exists in the graph
+- **THEN** the pending include is resolved, an edge is created, and the pending include is removed
 
-If an include string uses a disallowed macro, the Include Graph SHALL mark the including file node as Unresolved with reason `UnsupportedMacro`.
+### Requirement: Include Macro Policy
+The Include Graph SHALL validate and expand include strings according to the preset file `version` of the including file node.
+
+The following syntaxes SHALL be recognized in include strings:
+- `${name}`
+- `$penv{name}`
+
+The following syntaxes SHALL be treated as Unsupported in include strings:
+- `$env{name}`
+- `$vendor{...}`
+
+Preset-specific macros SHALL be treated as Unsupported in include strings.
+At minimum, `${presetName}` and `${generator}` SHALL be treated as Unsupported.
+
+#### Version 7 and 8 include rules
+- Include strings SHALL support `$penv{}` macro expansion only.
+- If an include string contains any `${...}` macro, the including file node SHALL be marked Unresolved with reason `UnsupportedMacro`.
+
+#### Version 9+ include rules
+- Include strings SHALL support `$penv{}` macro expansion.
+- Include strings SHALL support `${fileDir}` and `${dollar}`.
+- Include strings MAY support additional `${name}` macros if `name` is present in the Macro Context macro map provided for include expansion.
+
+If an include string uses an Unsupported macro syntax or an Unsupported `${name}`, the Include Graph SHALL mark the including file node as Unresolved with reason `UnsupportedMacro`.
+
+If an include string uses a Supported `${name}` that is not present in the Macro Context, the Include Graph SHALL leave it unexpanded and the including file node SHALL be marked Unresolved with reason `MissingMacro`.
 
 #### Scenario: Include uses a disallowed macro
 - **WHEN** a file node has an include string using `$env{HOME}`
+- **THEN** the file node is marked Unresolved with reason `UnsupportedMacro`
+
+#### Scenario: Include uses an unsupported preset-specific macro
+- **WHEN** a file node has an include string using `${presetName}`
 - **THEN** the file node is marked Unresolved with reason `UnsupportedMacro`
 
 #### Scenario: Include uses a file-derived macro
 - **WHEN** a file node at "./a/b/c/CMakePresets.json" has an include string "${fileDir}/d/e/linux-presets.json"
 - **THEN** the include can expand to "./a/b/c/d/e/linux-presets.json" when `${fileDir}` is provided
 
-#### Scenario: Resolving includes with complete context
-- **WHEN** an include string "d/e/linux-presets.json" expands to a file path that exists in the graph
-- **THEN** the pending include is resolved, an edge is created, and the pending include is removed
+#### Scenario: Include uses an unknown macro
+- **WHEN** a file node has an include string "${unknown}/presets.json" and `unknown` is not present in the Macro Context
+- **THEN** the include remains "${unknown}/presets.json"
+- **AND** the file node is marked Unresolved with reason `MissingMacro`
 
 ### Requirement: Missing Include Files Are Retained
 When an include string expands to a concrete file path but the file cannot be loaded, the Include Graph SHALL retain a File payload for that path and mark it as Unresolved with reason `FileDoesNotExist`.

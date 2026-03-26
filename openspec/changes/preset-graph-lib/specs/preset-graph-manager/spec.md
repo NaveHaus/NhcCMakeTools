@@ -81,6 +81,11 @@ At minimum, the manager SHALL provide `${fileDir}` as the directory containing t
 
 The manager SHALL provide `${dollar}` as a literal `$`.
 
+The manager SHALL construct the Macro Context used for include expansion by:
+- Starting from the caller-provided Macro Context macro map
+- Injecting file-derived macros such as `${fileDir}`
+- Injecting constant macros such as `${dollar}`
+
 #### Scenario: Resolving an include using fileDir
 - **GIVEN** a file node at path "./a/b/c/CMakePresets.json"
 - **AND** that file node has an include string "${fileDir}/d/e/linux-presets.json"

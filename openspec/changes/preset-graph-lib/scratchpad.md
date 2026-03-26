@@ -44,7 +44,7 @@ Last updated: 2026-03-26
   - `openspec/changes/preset-graph-lib/tasks.md`
 
 ### P1: include-macro allowance is underspecified
-- Status: Needs refinement
+- Status: Consistent
 - Notes:
   - `specs/preset-include-graph/spec.md` permits non-preset `${...}` macros for v9+ but does not define the allowlist or rejection criteria.
 - Artifacts touched:

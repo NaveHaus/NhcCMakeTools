@@ -69,6 +69,14 @@ Notes:
 - [ ] 5.7 **REFACTOR**: Review `PresetIncludeGraph`.
 - [ ] 5.8 **RED**: Add a failing test for marking a file node as Unresolved with reason `FileDoesNotExist`.
 - [ ] 5.9 **GREEN**: Implement the unresolved-reason tracking to pass the test.
+- [ ] 5.10 **RED**: Add a failing test verifying that an include string containing `$env{...}` marks the file node Unresolved with reason `UnsupportedMacro`.
+- [ ] 5.11 **GREEN**: Implement the `$env{}` rejection logic to pass the test.
+- [ ] 5.12 **RED**: Add a failing test verifying that an include string containing `${presetName}` marks the file node Unresolved with reason `UnsupportedMacro`.
+- [ ] 5.13 **GREEN**: Implement the preset-specific macro rejection logic to pass the test.
+- [ ] 5.14 **RED**: Add a failing test verifying that an include string containing `${unknown}` remains unexpanded and marks the file node Unresolved with reason `MissingMacro`.
+- [ ] 5.15 **GREEN**: Implement the missing-macro behavior for include strings to pass the test.
+- [ ] 5.16 **RED**: Add a failing test verifying that for preset file version 7/8, any `${...}` in an include string marks the file node Unresolved with reason `UnsupportedMacro`.
+- [ ] 5.17 **GREEN**: Implement the v7/v8 include macro restriction to pass the test.
 
 ## 6. preset-inheritance-graph
 
