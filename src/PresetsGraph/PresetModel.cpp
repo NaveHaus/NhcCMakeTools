@@ -59,30 +59,194 @@ ExtractEnvDependencies(const std::string& value)
 }
 
 bool
-IsBuildType(PresetType type)
+IsBuildType(PresetKind type)
 {
-  return type == PresetType::Build || type == PresetType::Test
-    || type == PresetType::Package;
+  return type == PresetKind::Build || type == PresetKind::Test
+    || type == PresetKind::Package;
+}
+
+const ConfigurePreset*
+AsConfigurePreset(const Preset& preset)
+{
+  return dynamic_cast<const ConfigurePreset*>(&preset);
+}
+
+const ConfigureConsumerPreset*
+AsConfigureConsumerPreset(const Preset& preset)
+{
+  return dynamic_cast<const ConfigureConsumerPreset*>(&preset);
 }
 
 }  // namespace
 
-void
-PresetModel::AddPreset(Preset preset)
+const std::string&
+Preset::GetName() const
 {
-  m_Presets[preset.Name] = std::move(preset);
+  return m_Name;
+}
+
+void
+Preset::SetName(std::string name)
+{
+  m_Name = std::move(name);
+}
+
+bool
+Preset::GetHidden() const
+{
+  return m_Hidden;
+}
+
+void
+Preset::SetHidden(bool hidden)
+{
+  m_Hidden = hidden;
+}
+
+const std::vector<std::string>&
+Preset::GetInherits() const
+{
+  return m_Inherits;
+}
+
+void
+Preset::SetInherits(std::vector<std::string> inherits)
+{
+  m_Inherits = std::move(inherits);
+}
+
+const Condition*
+Preset::GetCondition() const
+{
+  return m_Condition.get();
+}
+
+void
+Preset::SetCondition(std::unique_ptr<Condition> condition)
+{
+  m_Condition = std::move(condition);
+}
+
+const PresetEnvironment&
+Preset::GetEnvironment() const
+{
+  return m_Environment;
+}
+
+void
+Preset::SetEnvironment(PresetEnvironment environment)
+{
+  m_Environment = std::move(environment);
+}
+
+PresetKind
+ConfigurePreset::GetType() const
+{
+  return PresetKind::Configure;
+}
+
+const std::optional<std::string>&
+ConfigurePreset::GetInstallDir() const
+{
+  return m_InstallDir;
+}
+
+void
+ConfigurePreset::SetInstallDir(std::optional<std::string> installDir)
+{
+  m_InstallDir = std::move(installDir);
+}
+
+const std::optional<std::string>&
+ConfigurePreset::GetGenerator() const
+{
+  return m_Generator;
+}
+
+void
+ConfigurePreset::SetGenerator(std::optional<std::string> generator)
+{
+  m_Generator = std::move(generator);
+}
+
+const std::optional<std::string>&
+ConfigureConsumerPreset::GetConfigurePreset() const
+{
+  return m_ConfigurePreset;
+}
+
+void
+ConfigureConsumerPreset::SetConfigurePreset(
+  std::optional<std::string> configurePreset)
+{
+  m_ConfigurePreset = std::move(configurePreset);
+}
+
+bool
+ConfigureConsumerPreset::GetInheritConfigureEnvironment() const
+{
+  return m_InheritConfigureEnvironment;
+}
+
+void
+ConfigureConsumerPreset::SetInheritConfigureEnvironment(
+  bool inheritConfigureEnvironment)
+{
+  m_InheritConfigureEnvironment = inheritConfigureEnvironment;
+}
+
+PresetKind
+BuildPreset::GetType() const
+{
+  return PresetKind::Build;
+}
+
+PresetKind
+TestPreset::GetType() const
+{
+  return PresetKind::Test;
+}
+
+PresetKind
+PackagePreset::GetType() const
+{
+  return PresetKind::Package;
+}
+
+PresetKind
+WorkflowPreset::GetType() const
+{
+  return PresetKind::Workflow;
+}
+
+const std::vector<WorkflowStep>&
+WorkflowPreset::GetSteps() const
+{
+  return m_Steps;
+}
+
+void
+WorkflowPreset::SetSteps(std::vector<WorkflowStep> steps)
+{
+  m_Steps = std::move(steps);
+}
+
+void
+PresetModel::AddPreset(std::unique_ptr<Preset> preset)
+{
+  m_Presets[preset->GetName()] = std::move(preset);
 }
 
 const Preset&
 PresetModel::GetPreset(const std::string& name) const
 {
-  return m_Presets.at(name);
+  return *m_Presets.at(name);
 }
 
-PresetType
-PresetModel::GetPresetType(const std::string& name) const
+PresetKind
+PresetModel::GetPresetKind(const std::string& name) const
 {
-  return m_Presets.at(name).Type;
+  return m_Presets.at(name)->GetType();
 }
 
 ResolvedPreset
@@ -157,13 +321,15 @@ PresetModel::ResolvePreset(const std::string& name,
 PresetModel::RawResolvedPreset
 PresetModel::ResolveRawPreset(const std::string& name) const
 {
-  const auto& preset = m_Presets.at(name);
+  const auto& preset = *m_Presets.at(name);
 
   auto resolved = RawResolvedPreset{};
-  resolved.Type = preset.Type;
-  resolved.Name = preset.Name;
+  resolved.Type = preset.GetType();
+  resolved.Name = preset.GetName();
 
-  for(auto it = preset.Inherits.rbegin(); it != preset.Inherits.rend(); ++it) {
+  for(auto it = preset.GetInherits().rbegin();
+    it != preset.GetInherits().rend(); ++it)
+  {
     const auto parent = ResolveRawPreset(*it);
     if(parent.InstallDir.has_value()) {
       resolved.InstallDir = parent.InstallDir;
@@ -174,24 +340,31 @@ PresetModel::ResolveRawPreset(const std::string& name) const
     ApplyEnvironmentEntries(resolved.RawEnvironment, parent.RawEnvironment);
   }
 
-  if(IsBuildType(preset.Type) && preset.InheritConfigureEnvironment
-    && preset.ConfigurePreset.has_value())
+  if(const auto* buildPreset = AsConfigureConsumerPreset(preset);
+    buildPreset != nullptr && buildPreset->GetInheritConfigureEnvironment()
+    && buildPreset->GetConfigurePreset().has_value())
   {
-    const auto configure = ResolveRawPreset(*preset.ConfigurePreset);
+    const auto configure = ResolveRawPreset(*buildPreset->GetConfigurePreset());
     ApplyEnvironmentEntries(resolved.RawEnvironment, configure.RawEnvironment);
   }
 
-  ApplyEnvironmentEntries(resolved.RawEnvironment, preset.Environment);
+  ApplyEnvironmentEntries(resolved.RawEnvironment, preset.GetEnvironment());
 
-  if(preset.InstallDir.has_value()) {
-    resolved.InstallDir = preset.InstallDir;
-  }
-  if(preset.Generator.has_value()) {
-    resolved.EffectiveGenerator = preset.Generator;
+  if(const auto* configurePreset = AsConfigurePreset(preset);
+    configurePreset != nullptr)
+  {
+    if(configurePreset->GetInstallDir().has_value()) {
+      resolved.InstallDir = configurePreset->GetInstallDir();
+    }
+    if(configurePreset->GetGenerator().has_value()) {
+      resolved.EffectiveGenerator = configurePreset->GetGenerator();
+    }
   }
 
-  if(IsBuildType(preset.Type) && preset.ConfigurePreset.has_value()) {
-    const auto configure = ResolveRawPreset(*preset.ConfigurePreset);
+  if(const auto* buildPreset = AsConfigureConsumerPreset(preset);
+    buildPreset != nullptr && buildPreset->GetConfigurePreset().has_value())
+  {
+    const auto configure = ResolveRawPreset(*buildPreset->GetConfigurePreset());
     resolved.EffectiveGenerator = configure.EffectiveGenerator;
   }
 

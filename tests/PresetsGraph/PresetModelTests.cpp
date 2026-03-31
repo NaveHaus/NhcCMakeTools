@@ -3,36 +3,170 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <memory>
+#include <type_traits>
+
 #include "PresetModel.h"
 
 namespace {
 
+using nhc::preset_graph::BuildPreset;
+using nhc::preset_graph::ConfigurePreset;
+using nhc::preset_graph::EqualsCondition;
 using nhc::preset_graph::MacroContext;
+using nhc::preset_graph::PackagePreset;
 using nhc::preset_graph::Preset;
+using nhc::preset_graph::PresetKind;
 using nhc::preset_graph::PresetModel;
-using nhc::preset_graph::PresetType;
+using nhc::preset_graph::TestPreset;
 using nhc::preset_graph::UnresolvedReason;
+using nhc::preset_graph::WorkflowPreset;
+using nhc::preset_graph::WorkflowStep;
+using nhc::preset_graph::WorkflowStepType;
+
+template<typename TPreset>
+std::unique_ptr<TPreset>
+MakeNamedPreset(const std::string& name)
+{
+  auto preset = std::make_unique<TPreset>();
+  preset->SetName(name);
+  return preset;
+}
+
+template<typename TPreset>
+concept HasGetHidden = requires(const TPreset& preset) { preset.GetHidden(); };
+
+template<typename TPreset>
+concept HasGetInherits = requires(const TPreset& preset) {
+  preset.GetInherits();
+};
+
+template<typename TPreset>
+concept HasGetCondition = requires(const TPreset& preset) {
+  preset.GetCondition();
+};
+
+template<typename TPreset>
+concept HasGetEnvironment = requires(const TPreset& preset) {
+  preset.GetEnvironment();
+};
 
 }  // namespace
 
-SCENARIO("Preset type is preserved from source array kind")
+SCENARIO("Preset hierarchy exposes common and type-specific fields")
 {
-  GIVEN("A preset model containing all preset kinds")
+  GIVEN("Preset instances from each supported kind")
+  {
+    auto base = MakeNamedPreset<ConfigurePreset>("cfg");
+    base->SetHidden(true);
+    base->SetInherits({"base"});
+    base->SetCondition(std::make_unique<EqualsCondition>("x", "x"));
+    base->SetEnvironment({{"PATH", std::optional<std::string>{"/tmp/bin"}}});
+
+    auto build = MakeNamedPreset<BuildPreset>("bld");
+    build->SetConfigurePreset("cfg");
+    build->SetInheritConfigureEnvironment(false);
+
+    auto test = MakeNamedPreset<TestPreset>("tst");
+    test->SetConfigurePreset("cfg");
+
+    auto package = MakeNamedPreset<PackagePreset>("pkg");
+    package->SetConfigurePreset("cfg");
+
+    auto workflow = MakeNamedPreset<WorkflowPreset>("wrk");
+    workflow->SetSteps({WorkflowStep{
+      .Type = WorkflowStepType::Configure,
+      .Name = "cfg",
+    }});
+
+    THEN("Common fields and concrete kinds are available")
+    {
+      REQUIRE(base->GetName() == "cfg");
+      REQUIRE(base->GetHidden());
+      REQUIRE(base->GetInherits() == std::vector<std::string>{"base"});
+      REQUIRE(base->GetCondition() != nullptr);
+      REQUIRE(base->GetEnvironment().at("PATH")
+        == std::optional<std::string>{"/tmp/bin"});
+      REQUIRE(base->GetType() == PresetKind::Configure);
+      REQUIRE(build->GetType() == PresetKind::Build);
+      REQUIRE(test->GetType() == PresetKind::Test);
+      REQUIRE(package->GetType() == PresetKind::Package);
+      REQUIRE(workflow->GetType() == PresetKind::Workflow);
+    }
+
+    THEN("Derived presets expose their own typed accessors")
+    {
+      REQUIRE(build->GetConfigurePreset() == std::optional<std::string>{"cfg"});
+      REQUIRE_FALSE(build->GetInheritConfigureEnvironment());
+      REQUIRE(test->GetConfigurePreset() == std::optional<std::string>{"cfg"});
+      REQUIRE(package->GetConfigurePreset()
+        == std::optional<std::string>{"cfg"});
+    }
+
+    THEN("Workflow preset typed API exposes only name and steps")
+    {
+      static_assert(!HasGetHidden<WorkflowPreset>);
+      static_assert(!HasGetInherits<WorkflowPreset>);
+      static_assert(!HasGetCondition<WorkflowPreset>);
+      static_assert(!HasGetEnvironment<WorkflowPreset>);
+      REQUIRE(workflow->GetName() == "wrk");
+      REQUIRE(workflow->GetSteps().size() == 1);
+      REQUIRE(workflow->GetSteps().front().Type == WorkflowStepType::Configure);
+      REQUIRE(workflow->GetSteps().front().Name == "cfg");
+    }
+  }
+}
+
+SCENARIO("Configure preset exposes generator and installDir")
+{
+  GIVEN("A configure preset with configure-specific fields")
+  {
+    auto preset = MakeNamedPreset<ConfigurePreset>("cfg");
+    preset->SetGenerator("Ninja");
+    preset->SetInstallDir("install");
+
+    THEN("The fields are available through the typed API")
+    {
+      REQUIRE(preset->GetGenerator() == std::optional<std::string>{"Ninja"});
+      REQUIRE(preset->GetInstallDir() == std::optional<std::string>{"install"});
+    }
+  }
+}
+
+SCENARIO("Preset model stores presets polymorphically")
+{
+  GIVEN("A preset model receiving base-class unique_ptr values")
   {
     PresetModel model;
-    model.AddPreset(Preset{.Name = "cfg", .Type = PresetType::Configure});
-    model.AddPreset(Preset{.Name = "bld", .Type = PresetType::Build});
-    model.AddPreset(Preset{.Name = "tst", .Type = PresetType::Test});
-    model.AddPreset(Preset{.Name = "pkg", .Type = PresetType::Package});
-    model.AddPreset(Preset{.Name = "wrk", .Type = PresetType::Workflow});
 
-    THEN("Each preset reports its declared type")
+    std::unique_ptr<Preset> configure = MakeNamedPreset<ConfigurePreset>("cfg");
+    model.AddPreset(std::move(configure));
+    model.AddPreset(MakeNamedPreset<BuildPreset>("bld"));
+    model.AddPreset(MakeNamedPreset<TestPreset>("tst"));
+    model.AddPreset(MakeNamedPreset<PackagePreset>("pkg"));
+    model.AddPreset(MakeNamedPreset<WorkflowPreset>("wrk"));
+
+    THEN("Each preset reports its declared kind")
     {
-      REQUIRE(model.GetPresetType("cfg") == PresetType::Configure);
-      REQUIRE(model.GetPresetType("bld") == PresetType::Build);
-      REQUIRE(model.GetPresetType("tst") == PresetType::Test);
-      REQUIRE(model.GetPresetType("pkg") == PresetType::Package);
-      REQUIRE(model.GetPresetType("wrk") == PresetType::Workflow);
+      REQUIRE(model.GetPresetKind("cfg") == PresetKind::Configure);
+      REQUIRE(model.GetPresetKind("bld") == PresetKind::Build);
+      REQUIRE(model.GetPresetKind("tst") == PresetKind::Test);
+      REQUIRE(model.GetPresetKind("pkg") == PresetKind::Package);
+      REQUIRE(model.GetPresetKind("wrk") == PresetKind::Workflow);
+    }
+
+    THEN("Typed retrieval returns the correct derived type")
+    {
+      REQUIRE(model.GetPreset<ConfigurePreset>("cfg") != nullptr);
+      REQUIRE(model.GetPreset<BuildPreset>("bld") != nullptr);
+      REQUIRE(model.GetPreset<TestPreset>("tst") != nullptr);
+      REQUIRE(model.GetPreset<PackagePreset>("pkg") != nullptr);
+      REQUIRE(model.GetPreset<WorkflowPreset>("wrk") != nullptr);
+    }
+
+    THEN("Wrong typed retrieval returns null")
+    {
+      REQUIRE(model.GetPreset<BuildPreset>("cfg") == nullptr);
     }
   }
 }
@@ -42,10 +176,18 @@ SCENARIO("Earlier inherits entry wins scalar conflicts")
   GIVEN("A child inheriting from two parents with conflicting installDir")
   {
     PresetModel model;
-    model.AddPreset(Preset{.Name = "P0", .InstallDir = "p0"});
-    model.AddPreset(Preset{.Name = "P1", .InstallDir = "p1"});
-    model.AddPreset(Preset{
-      .Name = "C", .Type = PresetType::Configure, .Inherits = {"P0", "P1"}});
+
+    auto parentZero = MakeNamedPreset<ConfigurePreset>("P0");
+    parentZero->SetInstallDir("p0");
+    model.AddPreset(std::move(parentZero));
+
+    auto parentOne = MakeNamedPreset<ConfigurePreset>("P1");
+    parentOne->SetInstallDir("p1");
+    model.AddPreset(std::move(parentOne));
+
+    auto child = MakeNamedPreset<ConfigurePreset>("C");
+    child->SetInherits({"P0", "P1"});
+    model.AddPreset(std::move(child));
 
     WHEN("The child is resolved")
     {
@@ -64,19 +206,19 @@ SCENARIO("Environment merge honors parent precedence and null removal")
   GIVEN("A child with inherited environment and null override")
   {
     PresetModel model;
-    model.AddPreset(Preset{
-      .Name = "P0",
-      .Environment = {{"X", std::optional<std::string>{"0"}}},
-    });
-    model.AddPreset(Preset{
-      .Name = "P1",
-      .Environment = {{"X", std::optional<std::string>{"1"}}},
-    });
-    model.AddPreset(Preset{
-      .Name = "C",
-      .Inherits = {"P0", "P1"},
-      .Environment = {{"X", std::nullopt}},
-    });
+
+    auto parentZero = MakeNamedPreset<ConfigurePreset>("P0");
+    parentZero->SetEnvironment({{"X", std::optional<std::string>{"0"}}});
+    model.AddPreset(std::move(parentZero));
+
+    auto parentOne = MakeNamedPreset<ConfigurePreset>("P1");
+    parentOne->SetEnvironment({{"X", std::optional<std::string>{"1"}}});
+    model.AddPreset(std::move(parentOne));
+
+    auto child = MakeNamedPreset<ConfigurePreset>("C");
+    child->SetInherits({"P0", "P1"});
+    child->SetEnvironment({{"X", std::nullopt}});
+    model.AddPreset(std::move(child));
 
     WHEN("The child is resolved")
     {
@@ -95,28 +237,24 @@ SCENARIO("Build preset merges configure environment in middle")
   GIVEN("A build preset with inherited, configure, and explicit environment")
   {
     PresetModel model;
-    model.AddPreset(Preset{
-      .Name = "cfg",
-      .Type = PresetType::Configure,
-      .Environment = {{"X", std::optional<std::string>{"cfg"}}},
+
+    auto configure = MakeNamedPreset<ConfigurePreset>("cfg");
+    configure->SetEnvironment({{"X", std::optional<std::string>{"cfg"}}});
+    model.AddPreset(std::move(configure));
+
+    auto parent = MakeNamedPreset<BuildPreset>("P0");
+    parent->SetEnvironment({
+      {"X", std::optional<std::string>{"p0"}},
+      {"Y", std::optional<std::string>{"p0"}},
     });
-    model.AddPreset(Preset{
-      .Name = "P0",
-      .Type = PresetType::Build,
-      .Environment =
-        {
-          {"X", std::optional<std::string>{"p0"}},
-          {"Y", std::optional<std::string>{"p0"}},
-        },
-    });
-    model.AddPreset(Preset{
-      .Name = "bld",
-      .Type = PresetType::Build,
-      .Inherits = {"P0"},
-      .ConfigurePreset = "cfg",
-      .InheritConfigureEnvironment = true,
-      .Environment = {{"Y", std::optional<std::string>{"bld"}}},
-    });
+    model.AddPreset(std::move(parent));
+
+    auto build = MakeNamedPreset<BuildPreset>("bld");
+    build->SetInherits({"P0"});
+    build->SetConfigurePreset("cfg");
+    build->SetInheritConfigureEnvironment(true);
+    build->SetEnvironment({{"Y", std::optional<std::string>{"bld"}}});
+    model.AddPreset(std::move(build));
 
     WHEN("The build preset is resolved")
     {
@@ -137,14 +275,13 @@ SCENARIO("Environment supports out-of-order $env references")
   GIVEN("Environment values referencing each other")
   {
     PresetModel model;
-    model.AddPreset(Preset{
-      .Name = "cfg",
-      .Environment =
-        {
-          {"A", std::optional<std::string>{"$env{B}"}},
-          {"B", std::optional<std::string>{"b"}},
-        },
+
+    auto preset = MakeNamedPreset<ConfigurePreset>("cfg");
+    preset->SetEnvironment({
+      {"A", std::optional<std::string>{"$env{B}"}},
+      {"B", std::optional<std::string>{"b"}},
     });
+    model.AddPreset(std::move(preset));
 
     WHEN("The preset is resolved")
     {
@@ -163,14 +300,13 @@ SCENARIO("Environment reference cycles are detected")
   GIVEN("Environment values with a cycle")
   {
     PresetModel model;
-    model.AddPreset(Preset{
-      .Name = "cfg",
-      .Environment =
-        {
-          {"A", std::optional<std::string>{"$env{B}"}},
-          {"B", std::optional<std::string>{"$env{A}"}},
-        },
+
+    auto preset = MakeNamedPreset<ConfigurePreset>("cfg");
+    preset->SetEnvironment({
+      {"A", std::optional<std::string>{"$env{B}"}},
+      {"B", std::optional<std::string>{"$env{A}"}},
     });
+    model.AddPreset(std::move(preset));
 
     WHEN("The preset is resolved")
     {
@@ -189,14 +325,15 @@ SCENARIO("Inherited values expand with active presetName")
   GIVEN("A child inheriting presetName-dependent environment")
   {
     PresetModel model;
-    model.AddPreset(Preset{
-      .Name = "P0",
-      .Environment = {{"X", std::optional<std::string>{"${presetName}"}}},
-    });
-    model.AddPreset(Preset{
-      .Name = "child",
-      .Inherits = {"P0"},
-    });
+
+    auto parent = MakeNamedPreset<ConfigurePreset>("P0");
+    parent->SetEnvironment({{"X",
+      std::optional<std::string>{"${presetName}"}}});
+    model.AddPreset(std::move(parent));
+
+    auto child = MakeNamedPreset<ConfigurePreset>("child");
+    child->SetInherits({"P0"});
+    model.AddPreset(std::move(child));
 
     WHEN("The child preset is resolved")
     {
@@ -215,12 +352,11 @@ SCENARIO("Configure preset injects generator macro")
   GIVEN("A configure preset with a generator")
   {
     PresetModel model;
-    model.AddPreset(Preset{
-      .Name = "cfg",
-      .Type = PresetType::Configure,
-      .Generator = "Ninja",
-      .Environment = {{"G", std::optional<std::string>{"${generator}"}}},
-    });
+
+    auto preset = MakeNamedPreset<ConfigurePreset>("cfg");
+    preset->SetGenerator("Ninja");
+    preset->SetEnvironment({{"G", std::optional<std::string>{"${generator}"}}});
+    model.AddPreset(std::move(preset));
 
     WHEN("The preset is resolved")
     {
@@ -239,17 +375,15 @@ SCENARIO("Build preset derives generator from configurePreset")
   GIVEN("A build preset associated with configure preset")
   {
     PresetModel model;
-    model.AddPreset(Preset{
-      .Name = "cfg",
-      .Type = PresetType::Configure,
-      .Generator = "Ninja",
-    });
-    model.AddPreset(Preset{
-      .Name = "bld",
-      .Type = PresetType::Build,
-      .ConfigurePreset = "cfg",
-      .Environment = {{"G", std::optional<std::string>{"${generator}"}}},
-    });
+
+    auto configure = MakeNamedPreset<ConfigurePreset>("cfg");
+    configure->SetGenerator("Ninja");
+    model.AddPreset(std::move(configure));
+
+    auto build = MakeNamedPreset<BuildPreset>("bld");
+    build->SetConfigurePreset("cfg");
+    build->SetEnvironment({{"G", std::optional<std::string>{"${generator}"}}});
+    model.AddPreset(std::move(build));
 
     WHEN("The build preset is resolved")
     {
@@ -268,30 +402,31 @@ SCENARIO("Raw preset is accessible after adding")
   GIVEN("A preset model with a preset containing unexpanded macros")
   {
     PresetModel model;
-    model.AddPreset(Preset{
-      .Name = "cfg",
-      .Type = PresetType::Configure,
-      .Inherits = {"base"},
-      .InstallDir = "${sourceDir}/install",
-      .Generator = "Ninja",
-      .ConfigurePreset = std::nullopt,
-      .InheritConfigureEnvironment = false,
-      .Environment = {{"PATH", std::optional<std::string>{"${sourceDir}/bin"}}},
-    });
+
+    auto preset = MakeNamedPreset<ConfigurePreset>("cfg");
+    preset->SetInherits({"base"});
+    preset->SetInstallDir("${sourceDir}/install");
+    preset->SetGenerator("Ninja");
+    preset->SetEnvironment({{"PATH",
+      std::optional<std::string>{"${sourceDir}/bin"}}});
+    model.AddPreset(std::move(preset));
 
     WHEN("The raw preset is retrieved")
     {
       const auto& raw = model.GetPreset("cfg");
+      const auto* configure = model.GetPreset<ConfigurePreset>("cfg");
 
       THEN("All original values are preserved unexpanded")
       {
-        REQUIRE(raw.Name == "cfg");
-        REQUIRE(raw.Type == PresetType::Configure);
-        REQUIRE(raw.Inherits == std::vector<std::string>{"base"});
-        REQUIRE(raw.InstallDir
+        REQUIRE(raw.GetName() == "cfg");
+        REQUIRE(raw.GetType() == PresetKind::Configure);
+        REQUIRE(raw.GetInherits() == std::vector<std::string>{"base"});
+        REQUIRE(configure != nullptr);
+        REQUIRE(configure->GetInstallDir()
           == std::optional<std::string>{"${sourceDir}/install"});
-        REQUIRE(raw.Generator == std::optional<std::string>{"Ninja"});
-        REQUIRE(raw.Environment.at("PATH")
+        REQUIRE(configure->GetGenerator()
+          == std::optional<std::string>{"Ninja"});
+        REQUIRE(raw.GetEnvironment().at("PATH")
           == std::optional<std::string>{"${sourceDir}/bin"});
       }
     }

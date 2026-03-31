@@ -142,29 +142,29 @@ Notes:
 
 Refactor the preset model to use a proper class hierarchy instead of a single struct with a type enum.
 
-- [ ] 6b.1 **RED**: Add a failing test verifying that a base `Preset` class exposes common fields (`Name`, `Hidden`, `Inherits`, `Condition`, `Environment`) and can report its concrete type.
-- [ ] 6b.2 **GREEN**: Implement the base `Preset` class with common fields and a virtual `GetType()` method.
-- [ ] 6b.3 **RED**: Add a failing test verifying that `ConfigurePreset` derives from `Preset` and exposes `Generator` and `InstallDir`.
-- [ ] 6b.4 **GREEN**: Implement `ConfigurePreset` as a derived class.
-- [ ] 6b.5 **RED**: Add a failing test verifying that `BuildPreset` derives from `Preset` and exposes `ConfigurePreset` and `InheritConfigureEnvironment`.
-- [ ] 6b.6 **GREEN**: Implement `BuildPreset` as a derived class.
-- [ ] 6b.7 **RED**: Add a failing test verifying that `TestPreset` derives from `Preset` and exposes `ConfigurePreset` and `InheritConfigureEnvironment`.
-- [ ] 6b.8 **GREEN**: Implement `TestPreset` as a derived class.
-- [ ] 6b.9 **RED**: Add a failing test verifying that `PackagePreset` derives from `Preset` and exposes `ConfigurePreset` and `InheritConfigureEnvironment`.
-- [ ] 6b.10 **GREEN**: Implement `PackagePreset` as a derived class.
-- [ ] 6b.11 **RED**: Add a failing test verifying that `WorkflowPreset` exposes only `Name` and `Steps` through its typed API, and does not provide typed accessors for `Hidden`, `Inherits`, `Condition`, or `Environment`.
-- [ ] 6b.12 **GREEN**: Implement `WorkflowPreset` so it can participate in the preset hierarchy while exposing only `Name` and `Steps` through the typed API.
-- [ ] 6b.13 **RED**: Add a failing test verifying that `PresetModel::AddPreset()` accepts polymorphic preset types (e.g., `std::unique_ptr<Preset>`).
-- [ ] 6b.14 **GREEN**: Refactor `PresetModel` to store presets polymorphically.
-- [ ] 6b.15 **RED**: Add a failing test verifying that `PresetModel::GetPreset<ConfigurePreset>(name)` returns the preset as the correct derived type.
-- [ ] 6b.16 **GREEN**: Implement type-safe `GetPreset<T>()` accessor.
-- [ ] 6b.17 **RED**: Add a failing test verifying that `PresetModel::GetPreset<BuildPreset>(name)` throws or returns null if the preset is not a BuildPreset.
-- [ ] 6b.18 **GREEN**: Implement type checking in `GetPreset<T>()`.
-- [ ] 6b.19 **REFACTOR**: Update existing `PresetModelTests.cpp` to use the new class hierarchy.
-- [ ] 6b.20 **REFACTOR**: Update `ResolvePreset()` to work with the polymorphic preset hierarchy.
-- [ ] 6b.21 **REFACTOR**: Update dependent code in `PresetsGraph` manager to use the new hierarchy.
-- [ ] 6b.22 **REFACTOR**: Remove the old `PresetType` enum and flat `Preset` struct after migration is complete.
-- [ ] 6b.23 **REFACTOR**: Final review of preset type hierarchy for clarity and correctness.
+- [x] 6b.1 **RED**: Add a failing test verifying that a base `Preset` class exposes common fields (`Name`, `Hidden`, `Inherits`, `Condition`, `Environment`) and can report its concrete type.
+- [x] 6b.2 **GREEN**: Implement the base `Preset` class with common fields and a virtual `GetType()` method.
+- [x] 6b.3 **RED**: Add a failing test verifying that `ConfigurePreset` derives from `Preset` and exposes `Generator` and `InstallDir`.
+- [x] 6b.4 **GREEN**: Implement `ConfigurePreset` as a derived class.
+- [x] 6b.5 **RED**: Add a failing test verifying that `BuildPreset` derives from `Preset` and exposes `ConfigurePreset` and `InheritConfigureEnvironment`.
+- [x] 6b.6 **GREEN**: Implement `BuildPreset` as a derived class.
+- [x] 6b.7 **RED**: Add a failing test verifying that `TestPreset` derives from `Preset` and exposes `ConfigurePreset` and `InheritConfigureEnvironment`.
+- [x] 6b.8 **GREEN**: Implement `TestPreset` as a derived class.
+- [x] 6b.9 **RED**: Add a failing test verifying that `PackagePreset` derives from `Preset` and exposes `ConfigurePreset` and `InheritConfigureEnvironment`.
+- [x] 6b.10 **GREEN**: Implement `PackagePreset` as a derived class.
+- [x] 6b.11 **RED**: Add a failing test verifying that `WorkflowPreset` exposes only `Name` and `Steps` through its typed API, and does not provide typed accessors for `Hidden`, `Inherits`, `Condition`, or `Environment`.
+- [x] 6b.12 **GREEN**: Implement `WorkflowPreset` so it can participate in the preset hierarchy while exposing only `Name` and `Steps` through the typed API.
+- [x] 6b.13 **RED**: Add a failing test verifying that `PresetModel::AddPreset()` accepts polymorphic preset types (e.g., `std::unique_ptr<Preset>`).
+- [x] 6b.14 **GREEN**: Refactor `PresetModel` to store presets polymorphically.
+- [x] 6b.15 **RED**: Add a failing test verifying that `PresetModel::GetPreset<ConfigurePreset>(name)` returns the preset as the correct derived type.
+- [x] 6b.16 **GREEN**: Implement type-safe `GetPreset<T>()` accessor.
+- [x] 6b.17 **RED**: Add a failing test verifying that `PresetModel::GetPreset<BuildPreset>(name)` throws or returns null if the preset is not a BuildPreset.
+- [x] 6b.18 **GREEN**: Implement type checking in `GetPreset<T>()`.
+- [x] 6b.19 **REFACTOR**: Update existing `PresetModelTests.cpp` to use the new class hierarchy.
+- [x] 6b.20 **REFACTOR**: Update `ResolvePreset()` to work with the polymorphic preset hierarchy.
+- [x] 6b.21 **REFACTOR**: Update dependent code in `PresetsGraph` manager to use the new hierarchy.
+- [x] 6b.22 **REFACTOR**: Remove the old `PresetType` enum and flat `Preset` struct after migration is complete.
+- [x] 6b.23 **REFACTOR**: Final review of preset type hierarchy for clarity and correctness.
 
 ## 7. preset-graph-manager
 
