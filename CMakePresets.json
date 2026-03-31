@@ -44,6 +44,7 @@
         ".vcpkg-root"
       ],
       "generator": "Ninja Multi-Config",
+      "binaryDir": "${sourceDir}/.build/clangd",
       "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "VCPKG_INSTALLED_DIR": "${sourceDir}/.build/.cache-${presetName}",

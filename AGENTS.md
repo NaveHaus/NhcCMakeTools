@@ -195,6 +195,12 @@ Most common sequence of `openspec` operations:
     cmake --workflow --preset=clangd-ninja-vcpkg-release-test
     ```
 
+- **Ensuring a clangd-based C++ LSP Sees Changes**
+  - If a C++ LSP seems out-of-date, force CMake to reconfigure the project:
+    ```powershell
+    cmake --preset=clangd-ninja-vcpkg-mt-s
+    ```
+
 ## Example OpenSpec Workflows
 
 ### One-Shot Implementation
