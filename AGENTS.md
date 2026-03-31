@@ -192,7 +192,7 @@ Most common sequence of `openspec` operations:
 - **Verification Testing after a TDD Cycle**
   - After completing a TDD cycle to implement a new feature or modify an existing feature, verify correctness by executing:
     ```powershell
-    cmake --workflow --preset=vs18-vcpkg-mt-s-release-test
+    cmake --workflow --preset=clangd-ninja-vcpkg-release-test
     ```
 
 ## Example OpenSpec Workflows
