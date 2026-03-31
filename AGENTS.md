@@ -59,7 +59,7 @@ Most common sequence of `openspec` operations:
 1. `opsx-new <name>`: Initialize the change.
 2. `opsx-ff <name>`: Generate/update artifacts.
 3. `opsx-apply <name>`: Implement the tasks (following TDD process - see [Testing](#testing)).
-4. `./build.ps1 -Tasks test`: Verify all tests before completing the change.
+4. `cmake --workflow --preset=clangd-ninja-vcpkg-release-test`: Verify all tests before completing the change.
 5. `opsx-verify <name>`: Validate implementation against specs (see [Error Handling Guidance](#error-handling-guidance) if this fails).
 6. `opsx-sync <name>`: Make OpenSpec specs artifacts permanent.
 7. `opsx-archive <name>`: Archive the OpenSpec change.
@@ -170,9 +170,9 @@ Most common sequence of `openspec` operations:
   - **Result**: Executes a Release build under `.build/vs18-vcpkg-mt-s`, generating all library and executable artifacts.
 
 - **Executing All Tests**
-  - `cmake --test --preset=<preset>`: Test the `<preset>` build. The build MUST be configured AND built first. Example to test a Visual Studio 18 2026 Release build:
+  - `ctest --preset=<preset>`: Test the `<preset>` build. The build MUST be configured AND built first. Example to test a Visual Studio 18 2026 Release build:
     ```powershell
-    cmake --test --preset=vs18-vcpkg-mt-s-release-test
+    ctest --preset=vs18-vcpkg-mt-s-release-test
     ```
   - **Result**: Executes all tests for a Release build under `.build/vs18-vcpkg-mt-s`.
 
@@ -187,7 +187,7 @@ Most common sequence of `openspec` operations:
   - After modifying a `CMakeLists.txt` file, execute `cmake --preset=<preset>` to reconfigure the `<preset>` build.
   - After making changes to create or update `<feature>Tests.cpp`:
     - Execute `cmake --build --preset=<preset> --target <feature>Tests` to build the modified test.
-    - Execute `cmake --test --preset=<preset> --test-regex <feature>Tests` to execute the modified test.
+    - Execute `ctest --preset=<preset> --test-regex <feature>Tests` to execute the modified test.
 
 - **Verification Testing after a TDD Cycle**
   - After completing a TDD cycle to implement a new feature or modify an existing feature, verify correctness by executing:
