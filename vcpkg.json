@@ -4,32 +4,7 @@
   "license": "MIT",
   "homepage": "https://github.com/navehaus/nhccmaketools.git",
   "dependencies": [
-    "qtbase",
     "catch2",
-    "brotli",
-    "bzip2",
-    "double-conversion",
-    "egl-registry",
-    "freetype",
-    "harfbuzz",
-    "icu",
-    "libjpeg-turbo",
-    "libpng",
-    "libpq",
-    "lz4",
-    "opengl",
-    "opengl-registry",
-    "openssl",
-    "pcre2",
-    "pkgconf",
-    "sqlite3",
-    "vcpkg-cmake",
-    "vcpkg-cmake-config",
-    "vcpkg-cmake-get-vars",
-    "vcpkg-make",
-    "vcpkg-pkgconfig-get-modules",
-    "vcpkg-tool-meson",
-    "zlib",
-    "zstd"
+    "nlohmann-json"
   ]
 }

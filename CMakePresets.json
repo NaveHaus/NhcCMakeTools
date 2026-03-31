@@ -3,6 +3,7 @@
   "configurePresets": [
     {
       "name": ".defaults",
+      "hidden": true,
       "binaryDir": "${sourceDir}/.build/${presetName}"
     },
     {
@@ -35,6 +36,25 @@
         "VCPKG_TARGET_TRIPLET": "x64-windows-static",
         "VCPKG_HOST_TRIPLET": "x64-windows-static"
       }
+    },
+    {
+      "name": "clangd-ninja-vcpkg-mt-s",
+      "inherits": [
+        ".defaults",
+        ".vcpkg-root"
+      ],
+      "generator": "Ninja Multi-Config",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "VCPKG_INSTALLED_DIR": "${sourceDir}/.build/.cache-${presetName}",
+        "VCPKG_INSTALL_OPTIONS": "--no-print-usage",
+        "VCPKG_TARGET_TRIPLET": "$env{VCPKG_TARGET_TRIPLET}",
+        "VCPKG_HOST_TRIPLET": "$env{VCPKG_TARGET_TRIPLET}"
+      },
+      "environment": {
+        "VCPKG_TARGET_TRIPLET": "x64-windows-static",
+        "VCPKG_HOST_TRIPLET": "x64-windows-static"
+      }
     }
   ],
   "buildPresets": [
@@ -44,12 +64,28 @@
       "inheritConfigureEnvironment": true,
       "configuration": "Release",
       "jobs": 0
+    },
+    {
+      "name": "clangd-ninja-vcpkg-mt-s-release",
+      "configurePreset": "clangd-ninja-vcpkg-mt-s",
+      "inheritConfigureEnvironment": true,
+      "configuration": "Release",
+      "jobs": 0
     }
   ],
   "testPresets": [
     {
       "name": "vs18-vcpkg-mt-s-release",
       "configurePreset": "vs18-vcpkg-mt-s",
+      "inheritConfigureEnvironment": true,
+      "configuration": "Release",
+      "execution": {
+        "jobs": 0
+      }
+    },
+    {
+      "name": "clangd-ninja-vcpkg-mt-s-release",
+      "configurePreset": "clangd-ninja-vcpkg-mt-s",
       "inheritConfigureEnvironment": true,
       "configuration": "Release",
       "execution": {
@@ -72,6 +108,23 @@
         {
           "type": "test",
           "name": "vs18-vcpkg-mt-s-release"
+        }
+      ]
+    },
+    {
+      "name": "clangd-ninja-vcpkg-mt-s-release-test",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "clangd-ninja-vcpkg-mt-s"
+        },
+        {
+          "type": "build",
+          "name": "clangd-ninja-vcpkg-mt-s-release"
+        },
+        {
+          "type": "test",
+          "name": "clangd-ninja-vcpkg-mt-s-release"
         }
       ]
     }

@@ -1,32 +1,32 @@
 ## 1. Setup
 
-- [ ] 1.1 Add CMake target for a static library `NhcPresetGraph`
-- [ ] 1.2 Create test directory `tests/PresetsGraph`
-- [ ] 1.3 Add `tests/PresetsGraph/CMakeLists.txt` with `nhc_add_test_executable(... USES NhcTestLib)` entries for each `*Tests.cpp`
-- [ ] 1.4 Wire `tests/PresetsGraph/CMakeLists.txt` into the parent tests CMake configuration
-- [ ] 1.5 Add `nlohmann/json` dependency for `NhcPresetGraph`
-- [ ] 1.6 Add a file loader abstraction for reading preset files as strings
+- [x] 1.1 Add CMake target for a static library `NhcPresetGraph`
+- [x] 1.2 Create test directory `tests/PresetsGraph`
+- [x] 1.3 Add `tests/PresetsGraph/CMakeLists.txt` with `nhc_add_test_executable(... USES NhcTestLib)` entries for each `*Tests.cpp`
+- [x] 1.4 Wire `tests/PresetsGraph/CMakeLists.txt` into the parent tests CMake configuration
+- [x] 1.5 Add `nlohmann/json` dependency for `NhcPresetGraph`
+- [x] 1.6 Add a file loader abstraction for reading preset files as strings
 
 Notes:
 - The capabilities listed in `openspec/changes/preset-graph-lib/proposal.md` are implemented as modules within the `NhcPresetGraph` library.
 
 ## 2. preset-macro-context
 
-- [ ] 2.1 **RED**: In a new `tests/PresetsGraph/MacroContextTests.cpp`, write a failing test for storing and retrieving a macro value.
-- [ ] 2.2 **GREEN**: Implement the `MacroContext` class and minimal code to pass the test.
-- [ ] 2.3 **RED**: Add a failing test for expanding a string with a known macro returning `FullyExpanded` and no unresolved tokens.
-- [ ] 2.4 **GREEN**: Implement the expansion logic to pass the test.
-- [ ] 2.5 **RED**: Add a failing test for gracefully handling a string with an unknown macro by returning `PartiallyExpanded` and reporting the unresolved token.
-- [ ] 2.6 **GREEN**: Implement the partial expansion logic to pass the test.
-- [ ] 2.7 **RED**: Add a failing test verifying that `$env{NAME}` prefers the preset environment value over the parent environment value and returns `FullyExpanded`.
-- [ ] 2.8 **GREEN**: Implement `$env{}` expansion logic to pass the test.
-- [ ] 2.9 **RED**: Add a failing test verifying that `$penv{NAME}` uses only the parent environment value and returns `FullyExpanded`.
-- [ ] 2.10 **GREEN**: Implement `$penv{}` expansion logic to pass the test.
-- [ ] 2.10a **RED**: Add a failing test verifying that when the MacroContext parent environment map does not contain a variable, `$penv{VAR}` remains unresolved (not replaced with an empty string).
-- [ ] 2.10b **GREEN**: Implement the missing-parent-variable behavior to pass the test.
-- [ ] 2.10c **RED**: Add a failing test verifying that when neither preset nor parent environment defines a variable, `$env{VAR}` remains unresolved (not replaced with an empty string).
-- [ ] 2.10d **GREEN**: Implement the missing-variable behavior to pass the test.
-- [ ] 2.11 **REFACTOR**: Review `MacroContext` for clarity and correctness.
+- [x] 2.1 **RED**: In a new `tests/PresetsGraph/MacroContextTests.cpp`, write a failing test for storing and retrieving a macro value.
+- [x] 2.2 **GREEN**: Implement the `MacroContext` class and minimal code to pass the test.
+- [x] 2.3 **RED**: Add a failing test for expanding a string with a known macro returning `FullyExpanded` and no unresolved tokens.
+- [x] 2.4 **GREEN**: Implement the expansion logic to pass the test.
+- [x] 2.5 **RED**: Add a failing test for gracefully handling a string with an unknown macro by returning `PartiallyExpanded` and reporting the unresolved token.
+- [x] 2.6 **GREEN**: Implement the partial expansion logic to pass the test.
+- [x] 2.7 **RED**: Add a failing test verifying that `$env{NAME}` prefers the preset environment value over the parent environment value and returns `FullyExpanded`.
+- [x] 2.8 **GREEN**: Implement `$env{}` expansion logic to pass the test.
+- [x] 2.9 **RED**: Add a failing test verifying that `$penv{NAME}` uses only the parent environment value and returns `FullyExpanded`.
+- [x] 2.10 **GREEN**: Implement `$penv{}` expansion logic to pass the test.
+- [x] 2.10a **RED**: Add a failing test verifying that when the MacroContext parent environment map does not contain a variable, `$penv{VAR}` remains unresolved (not replaced with an empty string).
+- [x] 2.10b **GREEN**: Implement the missing-parent-variable behavior to pass the test.
+- [x] 2.10c **RED**: Add a failing test verifying that when neither preset nor parent environment defines a variable, `$env{VAR}` remains unresolved (not replaced with an empty string).
+- [x] 2.10d **GREEN**: Implement the missing-variable behavior to pass the test.
+- [x] 2.11 **REFACTOR**: Review `MacroContext` for clarity and correctness.
 
 ## 3. preset-graph-core
 
