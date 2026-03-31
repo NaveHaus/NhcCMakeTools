@@ -57,6 +57,23 @@ Notes:
 - [x] 4.15 **RED**: Add a failing test for `NotMatchesCondition`.
 - [x] 4.16 **GREEN**: Implement the `NotMatchesCondition` class to pass the test.
 - [x] 4.17 **REFACTOR**: Review `Condition` AST classes.
+- [x] 4.18 **RED**: Add a failing test for `NotEqualsCondition` that evaluates to true when values differ.
+- [x] 4.19 **GREEN**: Implement the `NotEqualsCondition` class to pass the test.
+- [x] 4.20 **RED**: Add a failing test for `NotEqualsCondition` that evaluates to false when values match.
+- [x] 4.21 **GREEN**: Update `NotEqualsCondition` to pass the test.
+- [x] 4.22 **RED**: Add a failing test for `AnyOfCondition` that short-circuits to true.
+- [x] 4.23 **GREEN**: Implement the `AnyOfCondition` class to pass the test.
+- [x] 4.24 **RED**: Add a failing test for `AnyOfCondition` that evaluates to false when all children are false.
+- [x] 4.25 **GREEN**: Update `AnyOfCondition` to pass the test.
+- [x] 4.26 **RED**: Add a failing test for `AnyOfCondition` that evaluates to unknown when no child is true but one is unknown.
+- [x] 4.27 **GREEN**: Update `AnyOfCondition` to pass the test.
+- [x] 4.28 **RED**: Add a failing test for `NotCondition` that inverts true to false.
+- [x] 4.29 **GREEN**: Implement the `NotCondition` class to pass the test.
+- [x] 4.30 **RED**: Add a failing test for `NotCondition` that inverts false to true.
+- [x] 4.31 **GREEN**: Update `NotCondition` to pass the test.
+- [x] 4.32 **RED**: Add a failing test for `NotCondition` that returns unknown when child is unknown.
+- [x] 4.33 **GREEN**: Update `NotCondition` to pass the test.
+- [x] 4.34 **REFACTOR**: Review new condition classes for clarity and consistency.
 
 ## 5. preset-include-graph
 
@@ -117,6 +134,37 @@ Notes:
 - [x] 6a.15 **RED**: Add a failing test verifying that `${generator}` for a Build/Test/Package preset is derived from its `configurePreset`.
 - [x] 6a.16 **GREEN**: Implement generator derivation via `configurePreset` to pass the test.
 - [x] 6a.17 **REFACTOR**: Review preset model and inheritance resolution.
+- [x] 6a.18 **RED**: Add a failing test verifying that `GetPreset(name)` returns the raw preset with original unexpanded values.
+- [x] 6a.19 **GREEN**: Implement `GetPreset()` accessor to pass the test.
+- [x] 6a.20 **REFACTOR**: Review raw preset accessor for clarity.
+
+## 6b. preset-model-type-hierarchy
+
+Refactor the preset model to use a proper class hierarchy instead of a single struct with a type enum.
+
+- [ ] 6b.1 **RED**: Add a failing test verifying that a base `Preset` class exposes common fields (`Name`, `Hidden`, `Inherits`, `Condition`, `Environment`) and can report its concrete type.
+- [ ] 6b.2 **GREEN**: Implement the base `Preset` class with common fields and a virtual `GetType()` method.
+- [ ] 6b.3 **RED**: Add a failing test verifying that `ConfigurePreset` derives from `Preset` and exposes `Generator` and `InstallDir`.
+- [ ] 6b.4 **GREEN**: Implement `ConfigurePreset` as a derived class.
+- [ ] 6b.5 **RED**: Add a failing test verifying that `BuildPreset` derives from `Preset` and exposes `ConfigurePreset` and `InheritConfigureEnvironment`.
+- [ ] 6b.6 **GREEN**: Implement `BuildPreset` as a derived class.
+- [ ] 6b.7 **RED**: Add a failing test verifying that `TestPreset` derives from `Preset` and exposes `ConfigurePreset` and `InheritConfigureEnvironment`.
+- [ ] 6b.8 **GREEN**: Implement `TestPreset` as a derived class.
+- [ ] 6b.9 **RED**: Add a failing test verifying that `PackagePreset` derives from `Preset` and exposes `ConfigurePreset` and `InheritConfigureEnvironment`.
+- [ ] 6b.10 **GREEN**: Implement `PackagePreset` as a derived class.
+- [ ] 6b.11 **RED**: Add a failing test verifying that `WorkflowPreset` exposes only `Name` and `Steps` through its typed API, and does not provide typed accessors for `Hidden`, `Inherits`, `Condition`, or `Environment`.
+- [ ] 6b.12 **GREEN**: Implement `WorkflowPreset` so it can participate in the preset hierarchy while exposing only `Name` and `Steps` through the typed API.
+- [ ] 6b.13 **RED**: Add a failing test verifying that `PresetModel::AddPreset()` accepts polymorphic preset types (e.g., `std::unique_ptr<Preset>`).
+- [ ] 6b.14 **GREEN**: Refactor `PresetModel` to store presets polymorphically.
+- [ ] 6b.15 **RED**: Add a failing test verifying that `PresetModel::GetPreset<ConfigurePreset>(name)` returns the preset as the correct derived type.
+- [ ] 6b.16 **GREEN**: Implement type-safe `GetPreset<T>()` accessor.
+- [ ] 6b.17 **RED**: Add a failing test verifying that `PresetModel::GetPreset<BuildPreset>(name)` throws or returns null if the preset is not a BuildPreset.
+- [ ] 6b.18 **GREEN**: Implement type checking in `GetPreset<T>()`.
+- [ ] 6b.19 **REFACTOR**: Update existing `PresetModelTests.cpp` to use the new class hierarchy.
+- [ ] 6b.20 **REFACTOR**: Update `ResolvePreset()` to work with the polymorphic preset hierarchy.
+- [ ] 6b.21 **REFACTOR**: Update dependent code in `PresetsGraph` manager to use the new hierarchy.
+- [ ] 6b.22 **REFACTOR**: Remove the old `PresetType` enum and flat `Preset` struct after migration is complete.
+- [ ] 6b.23 **REFACTOR**: Final review of preset type hierarchy for clarity and correctness.
 
 ## 7. preset-graph-manager
 

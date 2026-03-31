@@ -58,6 +58,8 @@ class PresetModel
   public:
   void AddPreset(Preset preset);
 
+  const Preset& GetPreset(const std::string& name) const;
+
   PresetType GetPresetType(const std::string& name) const;
 
   ResolvedPreset ResolvePreset(const std::string& name,

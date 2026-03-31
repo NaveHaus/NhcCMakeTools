@@ -114,6 +114,34 @@ To build an interactive UI, we need a data structure that can parse the raw, une
 **Rationale**: The graphs need consistent access to minimal typed fields (name, inherits, condition, environment) and deterministic inheritance semantics. Centralizing this in a preset model keeps graph logic focused on topology while still supporting macro expansion and raw/expanded views.
 **Alternatives Considered**: Directly parsing raw JSON within the graphs. Rejected because it duplicates parsing/merge logic across graphs and obscures macro-expansion responsibilities.
 
+**Raw/Expanded View Policy**:
+- The `Preset` struct stores the original/raw field values exactly as parsed from JSON.
+- The `ResolvedPreset` struct stores fully-resolved/expanded values after inheritance merge and macro expansion.
+- Callers querying preset data can access:
+  1. **Raw values**: The original `Preset` via `GetPreset(name)` for UI display of unexpanded text.
+  2. **Resolved values**: The `ResolvedPreset` via `ResolvePreset(name, context)` for computed/effective values.
+- This dual-view design supports UI scenarios where both the user's original input and the computed result must be displayed side-by-side.
+
+**Preset Type Hierarchy**:
+- A base `Preset` class defines fields common to most preset types: `name`, `hidden`, `inherits`, `condition`, `displayName`, `description`, `environment`.
+- Derived classes model type-specific fields:
+  - `ConfigurePreset`: Adds `generator`, `binaryDir`, `installDir`, `cacheVariables`, `toolchainFile`, `architecture`, `toolset`.
+  - `BuildPreset`: Adds `configurePreset`, `inheritConfigureEnvironment`, `jobs`, `targets`, `configuration`.
+  - `TestPreset`: Adds `configurePreset`, `inheritConfigureEnvironment`, `configuration`, `filter`, `output`, `execution`.
+  - `PackagePreset`: Adds `configurePreset`, `inheritConfigureEnvironment`, `generators`, `configurations`, `variables`.
+  - `WorkflowPreset`: Adds `steps`. It MAY derive from `Preset` for storage/polymorphism, but it SHALL NOT expose accessors for unsupported fields such as `hidden`, `inherits`, `condition`, or `environment`.
+- This hierarchy ensures type-specific validation and prevents invalid field combinations from being exposed through the typed API (e.g., `generator` on a BuildPreset, or workflow-only consumers reading unsupported base fields).
+- The `PresetModel` stores presets polymorphically and provides type-safe accessors for derived preset types.
+
+**Minimal Field Set (v1)**:
+- For this initial implementation, only fields required for graph resolution and macro expansion are modeled as typed members.
+- Type-specific fields beyond the minimal set (e.g., `jobs`, `targets`, `filter`) MAY be deferred to future changes.
+- The minimal typed fields are:
+  - Base `Preset`: `name`, `hidden`, `inherits`, `condition`, `environment`
+  - `ConfigurePreset`: `generator`, `installDir`
+  - `BuildPreset`, `TestPreset`, `PackagePreset`: `configurePreset`, `inheritConfigureEnvironment`
+  - `WorkflowPreset`: `steps` (as a list of step type/name pairs); unsupported common fields are not exposed through the typed API
+
 ## Risks / Trade-offs
 
 - **Risk**: Infinite loops during dynamic discovery. If a user sets a macro that causes an `include` path to point to a file we've already loaded, which points back to the first file, we could get stuck.

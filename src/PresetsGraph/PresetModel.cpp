@@ -73,6 +73,12 @@ PresetModel::AddPreset(Preset preset)
   m_Presets[preset.Name] = std::move(preset);
 }
 
+const Preset&
+PresetModel::GetPreset(const std::string& name) const
+{
+  return m_Presets.at(name);
+}
+
 PresetType
 PresetModel::GetPresetType(const std::string& name) const
 {

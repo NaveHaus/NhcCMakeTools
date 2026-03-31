@@ -54,6 +54,19 @@ class EqualsCondition final : public Condition
   std::string m_Right;
 };
 
+/// Inequality condition node.
+class NotEqualsCondition final : public Condition
+{
+  public:
+  NotEqualsCondition(std::string left, std::string right);
+
+  ConditionResult Evaluate(const MacroContext& context) const override;
+
+  private:
+  std::string m_Left;
+  std::string m_Right;
+};
+
 /// List membership condition node.
 class InListCondition final : public Condition
 {
@@ -118,6 +131,32 @@ class AllOfCondition final : public Condition
 
   private:
   std::vector<std::unique_ptr<Condition>> m_Children;
+};
+
+/// Logical any-of condition node.
+class AnyOfCondition final : public Condition
+{
+  public:
+  AnyOfCondition() = default;
+
+  void AddCondition(std::unique_ptr<Condition> condition);
+
+  ConditionResult Evaluate(const MacroContext& context) const override;
+
+  private:
+  std::vector<std::unique_ptr<Condition>> m_Children;
+};
+
+/// Logical not condition node.
+class NotCondition final : public Condition
+{
+  public:
+  explicit NotCondition(std::unique_ptr<Condition> child);
+
+  ConditionResult Evaluate(const MacroContext& context) const override;
+
+  private:
+  std::unique_ptr<Condition> m_Child;
 };
 
 }  // namespace nhc::preset_graph

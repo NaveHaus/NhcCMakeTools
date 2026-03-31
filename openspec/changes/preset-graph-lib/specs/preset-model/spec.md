@@ -8,11 +8,39 @@ The system SHALL represent CMake presets as one of the following types:
 - PackagePreset
 - WorkflowPreset
 
-All preset types SHALL be derived from a common base Preset concept.
+All preset types SHALL be derived from a common base Preset class that defines fields shared across preset types.
 
 #### Scenario: Identifying a preset type
 - **WHEN** a preset originates from the `buildPresets` array in a preset file
 - **THEN** it is represented as a BuildPreset
+
+### Requirement: Preset Type Hierarchy
+The system SHALL implement a class hierarchy for preset types:
+- A base `Preset` class SHALL define fields common to Configure, Build, Test, and Package presets: `name`, `hidden`, `inherits`, `condition`, `environment`.
+- `ConfigurePreset` SHALL derive from `Preset` and add: `generator`, `installDir`.
+- `BuildPreset` SHALL derive from `Preset` and add: `configurePreset`, `inheritConfigureEnvironment`.
+- `TestPreset` SHALL derive from `Preset` and add: `configurePreset`, `inheritConfigureEnvironment`.
+- `PackagePreset` SHALL derive from `Preset` and add: `configurePreset`, `inheritConfigureEnvironment`.
+- `WorkflowPreset` MAY derive from `Preset` for implementation convenience, but the typed API SHALL expose only `name` and `steps` for workflow presets. Per the CMake specification, workflow presets do not support `hidden`, `inherits`, `condition`, or `environment`, so callers SHALL NOT be given typed accessors for those fields on a `WorkflowPreset`.
+
+The `PresetModel` SHALL store presets polymorphically and provide type-safe accessors.
+
+#### Scenario: Accessing type-specific fields on ConfigurePreset
+- **GIVEN** a ConfigurePreset named "cfg" with generator "Ninja"
+- **WHEN** the preset is retrieved as a ConfigurePreset
+- **THEN** the `generator` field is accessible and equals "Ninja"
+
+#### Scenario: Accessing type-specific fields on BuildPreset
+- **GIVEN** a BuildPreset named "bld" with configurePreset "cfg"
+- **WHEN** the preset is retrieved as a BuildPreset
+- **THEN** the `configurePreset` field is accessible and equals "cfg"
+- **AND** the `inheritConfigureEnvironment` field is accessible
+
+#### Scenario: WorkflowPreset omits unsupported typed accessors
+- **GIVEN** a WorkflowPreset named "wf" with steps
+- **WHEN** the preset is queried
+- **THEN** its typed API does NOT expose `hidden`, `inherits`, `condition`, or `environment`
+- **AND** it exposes `name` and `steps`
 
 ### Requirement: Raw And Expanded Views
 For each preset, the system SHALL retain:
@@ -141,19 +169,39 @@ If an environment value references a missing variable, the reference SHALL remai
 - **AND** the expansion result Status is `PartiallyExpanded`
 
 ### Requirement: Library-Relevant Expanded Fields
-The system SHALL provide a minimal typed view of each preset sufficient to build and evaluate the graphs, including:
-- `name`
-- `inherits`
-- `condition`
-- `environment`
+The system SHALL provide a minimal typed view of each preset sufficient to build and evaluate the graphs.
 
-Additionally:
-- BuildPreset, TestPreset, and PackagePreset SHALL expose `configurePreset`.
-- BuildPreset, TestPreset, and PackagePreset SHALL expose `inheritConfigureEnvironment`.
-- ConfigurePreset SHALL expose `generator`.
+The base `Preset` class SHALL expose:
+- `name` (string, required)
+- `hidden` (bool, optional, defaults to false)
+- `inherits` (list of strings, optional)
+- `condition` (Condition AST, optional)
+- `environment` (map of string to optional string, optional)
+
+The `ConfigurePreset` class SHALL additionally expose:
+- `generator` (string, optional)
+- `installDir` (string, optional)
+
+The `BuildPreset`, `TestPreset`, and `PackagePreset` classes SHALL additionally expose:
+- `configurePreset` (string, optional)
+- `inheritConfigureEnvironment` (bool, defaults to true for Build/Test/Package)
+
+The `WorkflowPreset` class SHALL expose:
+- `name` (string, required)
+- `steps` (list of WorkflowStep, required)
+
+Where `WorkflowStep` contains:
+- `type` (enum: Configure, Build, Test, Package)
+- `name` (string, the preset name to execute)
 
 All other fields MAY be retained only in the raw/original JSON for this change.
 
 #### Scenario: Minimal typed access for graph resolution
 - **WHEN** a preset is added to the system
 - **THEN** its name, inherits list, condition, and environment can be queried without requiring consumers to inspect raw JSON
+
+#### Scenario: Type-safe preset retrieval
+- **GIVEN** a ConfigurePreset named "cfg" added to the model
+- **WHEN** a caller retrieves the preset
+- **THEN** the caller can access it as a `ConfigurePreset` to read `generator`
+- **AND** the caller can access it as a base `Preset` to read common fields

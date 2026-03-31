@@ -262,3 +262,38 @@ SCENARIO("Build preset derives generator from configurePreset")
     }
   }
 }
+
+SCENARIO("Raw preset is accessible after adding")
+{
+  GIVEN("A preset model with a preset containing unexpanded macros")
+  {
+    PresetModel model;
+    model.AddPreset(Preset{
+      .Name = "cfg",
+      .Type = PresetType::Configure,
+      .Inherits = {"base"},
+      .InstallDir = "${sourceDir}/install",
+      .Generator = "Ninja",
+      .ConfigurePreset = std::nullopt,
+      .InheritConfigureEnvironment = false,
+      .Environment = {{"PATH", std::optional<std::string>{"${sourceDir}/bin"}}},
+    });
+
+    WHEN("The raw preset is retrieved")
+    {
+      const auto& raw = model.GetPreset("cfg");
+
+      THEN("All original values are preserved unexpanded")
+      {
+        REQUIRE(raw.Name == "cfg");
+        REQUIRE(raw.Type == PresetType::Configure);
+        REQUIRE(raw.Inherits == std::vector<std::string>{"base"});
+        REQUIRE(raw.InstallDir
+          == std::optional<std::string>{"${sourceDir}/install"});
+        REQUIRE(raw.Generator == std::optional<std::string>{"Ninja"});
+        REQUIRE(raw.Environment.at("PATH")
+          == std::optional<std::string>{"${sourceDir}/bin"});
+      }
+    }
+  }
+}

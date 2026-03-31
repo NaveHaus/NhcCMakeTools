@@ -96,6 +96,25 @@ EqualsCondition::Evaluate(const MacroContext& context) const
     : ConditionResult::False;
 }
 
+NotEqualsCondition::NotEqualsCondition(std::string left, std::string right)
+: m_Left(std::move(left))
+, m_Right(std::move(right))
+{}
+
+ConditionResult
+NotEqualsCondition::Evaluate(const MacroContext& context) const
+{
+  const auto expandedLeft = context.ExpandString(m_Left);
+  const auto expandedRight = context.ExpandString(m_Right);
+  if(IsUnknown(expandedLeft) || IsUnknown(expandedRight)) {
+    return ConditionResult::Unknown;
+  }
+
+  return expandedLeft.ExpandedString != expandedRight.ExpandedString
+    ? ConditionResult::True
+    : ConditionResult::False;
+}
+
 InListCondition::InListCondition(std::string value,
   std::vector<std::string> values)
 : m_Value(std::move(value))
@@ -163,6 +182,46 @@ AllOfCondition::Evaluate(const MacroContext& context) const
   }
 
   return hasUnknown ? ConditionResult::Unknown : ConditionResult::True;
+}
+
+void
+AnyOfCondition::AddCondition(std::unique_ptr<Condition> condition)
+{
+  m_Children.push_back(std::move(condition));
+}
+
+ConditionResult
+AnyOfCondition::Evaluate(const MacroContext& context) const
+{
+  bool hasUnknown = false;
+  for(const auto& child : m_Children) {
+    const auto result = child->Evaluate(context);
+    if(result == ConditionResult::True) {
+      return ConditionResult::True;
+    }
+    if(result == ConditionResult::Unknown) {
+      hasUnknown = true;
+    }
+  }
+
+  return hasUnknown ? ConditionResult::Unknown : ConditionResult::False;
+}
+
+NotCondition::NotCondition(std::unique_ptr<Condition> child)
+: m_Child(std::move(child))
+{}
+
+ConditionResult
+NotCondition::Evaluate(const MacroContext& context) const
+{
+  const auto result = m_Child->Evaluate(context);
+  if(result == ConditionResult::True) {
+    return ConditionResult::False;
+  }
+  if(result == ConditionResult::False) {
+    return ConditionResult::True;
+  }
+  return ConditionResult::Unknown;
 }
 
 }  // namespace nhc::preset_graph

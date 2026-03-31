@@ -18,6 +18,8 @@
 
 **Severity**: CRITICAL
 
+**Status**: Fixed
+
 **Affected Files**:
 - `src/PresetsGraph/PresetModel.h:42`
 - `src/PresetsGraph/PresetModel.cpp:82`
@@ -25,9 +27,13 @@
 **Suggestion**:
 Add raw/original preset storage plus raw-and-expanded field accessors so the model retains the original JSON and preserves original strings alongside computed expansions.
 
+**Resolution**: Added `GetPreset(name)` accessor to expose raw `Preset` values. The dual-view design (raw via `GetPreset()`, resolved via `ResolvePreset()`) is now documented in design.md Decision #9. Tasks 6a.18-6a.20 added and completed with TDD.
+
 ### Minimal typed preset view omits required fields
 
 **Severity**: CRITICAL
+
+**Status**: Artifacts Updated (Implementation Pending)
 
 **Affected Files**:
 - `src/PresetsGraph/PresetModel.h:42`
@@ -35,9 +41,13 @@ Add raw/original preset storage plus raw-and-expanded field accessors so the mod
 **Suggestion**:
 Extend the typed preset model so callers can query `inherits`, `condition`, `environment`, `configurePreset`, and `inheritConfigureEnvironment` in addition to the currently exposed fields.
 
+**Resolution**: Updated design.md Decision #9 with "Preset Type Hierarchy" section specifying a class hierarchy (base `Preset` with derived `ConfigurePreset`, `BuildPreset`, `TestPreset`, `PackagePreset`, `WorkflowPreset`). Revised the workflow-preset artifact language so `WorkflowPreset` MAY derive from `Preset` for implementation convenience, but its typed API exposes only `name` and `steps` and omits unsupported accessors. Updated specs/preset-model/spec.md and tasks 6b.11-6b.12 to match. Implementation pending.
+
 ### Missing notEquals condition support
 
 **Severity**: CRITICAL
+
+**Status**: Fixed
 
 **Affected Files**:
 - `src/PresetsGraph/Condition.h:45`
@@ -47,9 +57,13 @@ Extend the typed preset model so callers can query `inherits`, `condition`, `env
 **Suggestion**:
 Implement `NotEqualsCondition` and add BDD test coverage for the corresponding requirement scenarios.
 
+**Resolution**: Implemented `NotEqualsCondition` class following the `EqualsCondition` pattern. Added scenarios to specs/preset-condition-ast/spec.md. Added tasks 4.18-4.21 and completed with TDD. Two BDD tests added for true/false cases.
+
 ### Missing anyOf and not condition support
 
 **Severity**: CRITICAL
+
+**Status**: Fixed
 
 **Affected Files**:
 - `src/PresetsGraph/Condition.h:109`
@@ -58,6 +72,8 @@ Implement `NotEqualsCondition` and add BDD test coverage for the corresponding r
 
 **Suggestion**:
 Implement `AnyOfCondition` and `NotCondition`, then add tests that cover the required boolean logic scenarios.
+
+**Resolution**: Implemented `AnyOfCondition` (short-circuit true, all-false, and unknown handling) and `NotCondition` (inversion with unknown preservation). Added scenarios to specs/preset-condition-ast/spec.md. Added tasks 4.22-4.34 and completed with TDD. Seven BDD tests added covering all logic cases.
 
 ### Condition parsing uses a placeholder AST
 
