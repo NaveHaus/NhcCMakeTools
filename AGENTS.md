@@ -1,11 +1,10 @@
 # Context, Rules, and Guidelines for AI Agents
-The NhcCMakeTools project hosts tools that focus on improving quality-of-life for developers working with the [CMake](https://cmake.org) cross-platform build system.
-
-## Sections
+**Table of Contents**
+- [Overview](#overview)
 - [Tech stack](#tech-stack)
 - [Safety & Operational Rules (MANDATORY)](#safety--operational-rules-mandatory)
-- [Terminology](#terminology)
 - [Process](#process)
+  - [Prerequisites (MANDATORY)](#prerequisites-mandatory)
   - [Requirements (MANDATORY)](#requirements-mandatory)
 - [Code Style](#code-style)
   - [Requirements (MANDATORY)](#requirements-mandatory-1)
@@ -17,6 +16,9 @@ The NhcCMakeTools project hosts tools that focus on improving quality-of-life fo
   - [One-Shot Exploration to Implementation](#one-shot-exploration-to-implementation)
   - [Iterative Exploration to Implementation](#iterative-exploration-to-implementation)
 
+## Overview
+The NhcCMakeTools project hosts tools that focus on improving quality-of-life for developers working with the [CMake](https://cmake.org) cross-platform build system.
+
 ## Tech stack
 - c++23
 - clang-format
@@ -25,6 +27,7 @@ The NhcCMakeTools project hosts tools that focus on improving quality-of-life fo
 - Catch2 v3.11+
 - Doxygen 1.16+
 - GitHub Flavored Markdown
+- OpenSpec
 
 ## Safety & Operational Rules (MANDATORY)
 To maintain repository integrity, agents MUST follow these rules:
@@ -38,33 +41,39 @@ To maintain repository integrity, agents MUST follow these rules:
   - DO warn the user if `git` returns an error or reports that the remote branch is missing.
   - DO offer to resolve `git` errors, presenting the user with 1-4 options for doing so.
 - **Path Handling**: Always use absolute paths when interacting with file system tools.
-- **Build Consistency**: DO NOT directly modify or remove any files under the `.build` directory.
+- **Build Consistency**: DO NOT directly modify or remove any files or directories listed in `.gitignore`.
 - **Verification**: Always run build and test commands after modifications.
 
-## Terminology
-- **OpenSpec**: An artifact-driven workflow for managing software changes (features, fixes, etc.) through structured specifications and tasks.
-- **openspec-***: Agent skills for interacting with an OpenSpec change workflow.
-- **convetional-commits**: An agent skill for generating a `git` commit message following the Conventional Commits v1.0 specification.
-- **nhc-openspec-commit**: A skill that uses the `conventional-commits` skill to generate compliant `git` commit messages summarizing the changes made by an OpenSpec workflow.
-
 ## Process
-### Requirements (MANDATORY)
-- An OpenSpec workflow MUST be used to plan new features and modifications of existing features (e.g. bug fixes). Warn the user if the `openspec` directory is missing or inaccessible.
-- A test-driven development (TDD) RED/GREEN/REFACTORING workflow is required when implementing ALL code additions and modifications. Warn the user if the `tdd` skill is missing or inaccessible.
-- The `nhc-openspec-commit` skill MUST be used to generate a `git` commit message and commit changes made WITH an OpenSpec workflow, but only AFTER the OpenSpec change has been archived. Warn the user if the `nhc-openspec-commit` skill is missing or inaccessible.
-- The `conventional-commits` skill MUST be used to generate a `git` commit message for changes made OUTSiDE of an OpenSpec workflow. Warn the user if the `conventional-commits` skill is missing or inaccessible.
-- NOTE: If unsure about which commit strategy applies, you MUST ask the user to avoid generating spurious or erroneous commits.
 
-Most common sequence of `openspec` operations:
-1. `openspec-new <name>`: Initialize the change.
-2. `openspec-ff <name>`: Generate/update artifacts.
-3. `openspec-apply <name>`: Implement the tasks (following TDD process - see [Testing](#testing)).
-4. `cmake --workflow --preset=clangd-ninja-vcpkg-release-test`: Verify all tests before completing the change.
-5. `nhc-opsx-verify <name>`: Validate implementation against specs (see [Error Handling Guidance](#error-handling-guidance) if this fails).
-6. `openspec-sync <name>`: Make OpenSpec specs artifacts permanent.
-7. `openspec-archive <name>`: Archive the OpenSpec change.
-8. `git add ./openspec/ <paths-to-changed-files-and-directories>`: Stage the archived OpenSpec artifacts and associated changes.
-9. `nhc-openspec-commit`: Generate a `conventional-commits` `git` commit message based on the staged changes and complete the commit.
+### Prerequisites (MANDATORY)
+- Warn the user if the `openspec` directory is missing or inaccessible in the current workspace.
+- Warn the user if the `tdd` skill is unavailable.
+- Warn the user if the `nhc-openspec-commit` skill is unavailable.
+- Warn the user if the `nhc-conventional-commit` skill is unavailable.
+
+### Requirements (MANDATORY)
+- You MUST use an OpenSpec workflow to plan new features and modifications of existing features.
+- You MUST use the `nhc-openspec-commit` skill to generate a `git` commit message and commit changes made within an OpenSpec workflow.
+- You MUST use the `nhc-conventional-commit` skill to generate a `git` commit message for changes made outside an OpenSpec workflow.
+- You MUST use the test-driven development (TDD) `tdd` skill:
+  - To generate testing tasks in the OpenSpec `tasks.md` artifact.
+  - To test new code.
+  - To test changes to existing code.
+  - To update ALL tests affected by adding or changing code.
+- You MAY skip testing for non-code changes, e.g. documentation changes.
+- You MUST store ALL tests under `tests/<category>`, where `<category>` MUST be the name of the component (e.g. library, tool, etc.) containing the feature/class under test.
+
+**Most common OpenSpec workflow:**
+1. `openspec-new-change`: Initialize the change.
+2. `openspec-ff-change`: Generate/update artifacts.
+3. `nhc-openspec-refine`: Make artifacts implementation-ready (this step may be repeated until no new issues are found).
+4. `openspec-apply-change`: Implement the tasks in `tasks.md` following the TDD RED/GREEN/REFACTOR process.
+5. `cmake --workflow --preset=clangd-ninja-vcpkg-release-test`: Verify all tests before completing the change.
+6. `nhc-openspec-verify`: Validate implementation against specs (this step may be repeated until no new issues are found).
+7. `openspec-sync-specs`: Make OpenSpec spec files permanent.
+8. `openspec-archive-change`: Archive the OpenSpec change.
+9. `nhc-openspec-commit`: Generate a standard `git` commit message for the changes made by the OpenSpec workflow.
 
 ## Code Style
 ### Requirements (MANDATORY)
@@ -110,10 +119,8 @@ Most common sequence of `openspec` operations:
   ```
 
 ## Testing
+
 ### Requirements (MANDATORY)
-- A test-driven development (TDD) process MUST be used when changing or adding code.
-- ALL changes to existing code MUST be tested by updating ALL relevant existing tests following TDD.
-- Tests MUST be stored under `tests/<category>`, where `<category>` MUST be the name of the library or tool containing the feature/class under test.
 - Test files MUST follow the naming convention: `tests/<category>/<feature>Tests.cpp`, e.g. `tests/MyLibName/MyClassTests.cpp` for a library class test, or `tests/MyToolName/MyToolSpecificClassTests.cpp` for an executable tool.
   - `<feature>` will normally be the name of a C++ class under test, e.g. `MyClassTests.cpp`
   - The test must be registered with CMake by modifying `tests/<category>/CMakeLists.txt` to call the `nhc_add_test_executable()` CMake function, defined in `cmake/NhcTargetFunctions.cmake`, e.g.:
@@ -205,61 +212,65 @@ Most common sequence of `openspec` operations:
 
 ### One-Shot Implementation
 Can be used for simple changes that require no investigation or decision making prior to implementation:
-- Generate the OpenSpec change artifacts in one shot:
-  - `openspec-new <change-name>`
-  - `openspec-ff <change-name>`
+- Generate and review the OpenSpec change artifacts in one shot:
+  - `openspec-new-change`
+  - `openspec-ff-change`
+  - `nhc-openspec-refine`
 - Implement and verify the change:
-  - `openspec-apply <change-name>`
+  - `openspec-apply-change`
   - See [Edit-Build-Test Commands (MANDATORY)](#edit-build-test-commands-mandatory) for the required commands to use to implement the change.
-  - `nhc-opsx-verify <change-name>`
+  - `nhc-openspec-verify`
 - Archive the completed OpenSpec change:
-  - `openspec-sync <change-name>`
-  - `openspec-archive <change-name>`
+  - `openspec-sync-specs`
+  - `openspec-archive-change`
 - Locally commit the working OpenSpec artifacts and associated project changes:
   - `git add ./openspec/ <changed-files-and-or-directories>`, e.g.:
     ```bash
-    git add ${pwd}/openspec ${pwd}/CMakeLists.txt ${pwd}/tests/NhcMyLibName/MyClassTests.cpp
+    git add ${pwd}/openspec ${pwd}/src ${pwd}/tests
     ```
   - Use the `nhc-openspec-commit` skill to complete the `git` commit.
 
 ### One-Shot Exploration to Implementation
 Can be used for straightforward changes that require some upfront investigation and/or decision making prior to implementing.
 - Interactively research and investigate a change with the user:
-  - `openspec-explore <topic>`
-- Generate the OpenSpec change artifacts in one shot:
-  - `openspec-new <change-name>`
-  - `openspec-ff <change-name>`
+  - `openspec-explore`
+- Generate and review the OpenSpec change artifacts in one shot:
+  - `openspec-new-change`
+  - `openspec-ff-change`
+  - `nhc-openspec-refine`
 - Implement and verify the change:
-  - `openspec-apply <change-name>`
+  - `openspec-apply-change`
   - See [Edit-Build-Test Commands (MANDATORY)](#edit-build-test-commands-mandatory) for the required commands to use to implement the change.
-  - `nhc-opsx-verify <change-name>`
+  - `nhc-openspec-verify`
 - Archive the completed OpenSpec change:
-  - `openspec-sync <change-name>`
-  - `openspec-archive <change-name>`
+  - `openspec-sync-specs`
+  - `openspec-archive-change`
 - Locally commit the working OpenSpec artifacts and associated project changes:
   - `git add ./openspec/ <changed-files-and-or-directories>`, e.g.:
     ```bash
-    git add ${pwd}/openspec ${pwd}/CMakeLists.txt ${pwd}/tests/NhcMyLibName/MyClassTests.cpp
+    git add ${pwd}/openspec ${pwd}/src ${pwd}/tests
     ```
   - Use the `nhc-openspec-commit` skill to complete the `git` commit.
 
 ### Iterative Exploration to Implementation
 Can be used for complex changes or changes with unclear requirements.
 - Interactively research and investigate a change with the user:
-  - `openspec-explore <topic>`
+  - `openspec-explore`
 - Iteratively generate the OpenSpec change artifacts:
-  - `openspec-new <change-name>`
-  - `openspec-continue <change-name>` iteratively and interactively with the user until all artifacts have been accepted.
+  - `openspec-new-change`
+  - `openspec-continue-change` iteratively and interactively with the user until all artifacts have been accepted.
+- Review the artifacts before implementation:
+  - `nhc-openspec-refine`
 - Implement and verify the change:
-  - `openspec-apply <change-name>`
+  - `openspec-apply-change`
   - See [Edit-Build-Test Commands (MANDATORY)](#edit-build-test-commands-mandatory) for the required commands to use to implement the change.
-  - `nhc-opsx-verify <change-name>`
+  - `nhc-openspec-verify`
 - Archive the completed OpenSpec change:
-  - `openspec-sync <change-name>`
-  - `openspec-archive <change-name>`
+  - `openspec-sync-specs`
+  - `openspec-archive-change`
 - Locally commit the working OpenSpec artifacts and associated project changes:
   - `git add ./openspec/ <changed-files-and-or-directories>`, e.g.:
     ```bash
-    git add ${pwd}/openspec ${pwd}/CMakeLists.txt ${pwd}/tests/NhcMyLibName/MyClassTests.cpp
+    git add ${pwd}/openspec ${pwd}/src ${pwd}/tests
     ```
   - Use the `nhc-openspec-commit` skill to complete the `git` commit.
