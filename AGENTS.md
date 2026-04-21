@@ -51,20 +51,20 @@ To maintain repository integrity, agents MUST follow these rules:
 ### Requirements (MANDATORY)
 - An OpenSpec workflow MUST be used to plan new features and modifications of existing features (e.g. bug fixes). Warn the user if the `openspec` directory is missing or inaccessible.
 - A test-driven development (TDD) RED/GREEN/REFACTORING workflow is required when implementing ALL code additions and modifications. Warn the user if the `tdd` skill is missing or inaccessible.
-- The `nhc-opsx-commit` skill MUST be used to generate a `git` commit message and commit changes made WITH an OpenSpec workflow, but only AFTER the OpenSpec change has been archived. Warn the user if the `nhc-opsx-commit` skill is missing or inaccessible.
+- The `nhc-openspec-commit` skill MUST be used to generate a `git` commit message and commit changes made WITH an OpenSpec workflow, but only AFTER the OpenSpec change has been archived. Warn the user if the `nhc-openspec-commit` skill is missing or inaccessible.
 - The `conventional-commits` skill MUST be used to generate a `git` commit message for changes made OUTSiDE of an OpenSpec workflow. Warn the user if the `conventional-commits` skill is missing or inaccessible.
 - NOTE: If unsure about which commit strategy applies, you MUST ask the user to avoid generating spurious or erroneous commits.
 
 Most common sequence of `openspec` operations:
-1. `opsx-new <name>`: Initialize the change.
-2. `opsx-ff <name>`: Generate/update artifacts.
-3. `opsx-apply <name>`: Implement the tasks (following TDD process - see [Testing](#testing)).
+1. `openspec-new <name>`: Initialize the change.
+2. `openspec-ff <name>`: Generate/update artifacts.
+3. `openspec-apply <name>`: Implement the tasks (following TDD process - see [Testing](#testing)).
 4. `cmake --workflow --preset=clangd-ninja-vcpkg-release-test`: Verify all tests before completing the change.
-5. `opsx-verify <name>`: Validate implementation against specs (see [Error Handling Guidance](#error-handling-guidance) if this fails).
-6. `opsx-sync <name>`: Make OpenSpec specs artifacts permanent.
-7. `opsx-archive <name>`: Archive the OpenSpec change.
+5. `nhc-opsx-verify <name>`: Validate implementation against specs (see [Error Handling Guidance](#error-handling-guidance) if this fails).
+6. `openspec-sync <name>`: Make OpenSpec specs artifacts permanent.
+7. `openspec-archive <name>`: Archive the OpenSpec change.
 8. `git add ./openspec/ <paths-to-changed-files-and-directories>`: Stage the archived OpenSpec artifacts and associated changes.
-9. `nhc-opsx-commit`: Generate a `conventional-commits` `git` commit message based on the staged changes and complete the commit.
+9. `nhc-openspec-commit`: Generate a `conventional-commits` `git` commit message based on the staged changes and complete the commit.
 
 ## Code Style
 ### Requirements (MANDATORY)
@@ -206,15 +206,15 @@ Most common sequence of `openspec` operations:
 ### One-Shot Implementation
 Can be used for simple changes that require no investigation or decision making prior to implementation:
 - Generate the OpenSpec change artifacts in one shot:
-  - `opsx-new <change-name>`
-  - `opsx-ff <change-name>`
+  - `openspec-new <change-name>`
+  - `openspec-ff <change-name>`
 - Implement and verify the change:
-  - `opsx-apply <change-name>`
+  - `openspec-apply <change-name>`
   - See [Edit-Build-Test Commands (MANDATORY)](#edit-build-test-commands-mandatory) for the required commands to use to implement the change.
-  - `opsx-verify <change-name>`
+  - `nhc-opsx-verify <change-name>`
 - Archive the completed OpenSpec change:
-  - `opsx-sync <change-name>`
-  - `opsx-archive <change-name>`
+  - `openspec-sync <change-name>`
+  - `openspec-archive <change-name>`
 - Locally commit the working OpenSpec artifacts and associated project changes:
   - `git add ./openspec/ <changed-files-and-or-directories>`, e.g.:
     ```bash
@@ -225,17 +225,17 @@ Can be used for simple changes that require no investigation or decision making 
 ### One-Shot Exploration to Implementation
 Can be used for straightforward changes that require some upfront investigation and/or decision making prior to implementing.
 - Interactively research and investigate a change with the user:
-  - `opsx-explore <topic>`
+  - `openspec-explore <topic>`
 - Generate the OpenSpec change artifacts in one shot:
-  - `opsx-new <change-name>`
-  - `opsx-ff <change-name>`
+  - `openspec-new <change-name>`
+  - `openspec-ff <change-name>`
 - Implement and verify the change:
-  - `opsx-apply <change-name>`
+  - `openspec-apply <change-name>`
   - See [Edit-Build-Test Commands (MANDATORY)](#edit-build-test-commands-mandatory) for the required commands to use to implement the change.
-  - `opsx-verify <change-name>`
+  - `nhc-opsx-verify <change-name>`
 - Archive the completed OpenSpec change:
-  - `opsx-sync <change-name>`
-  - `opsx-archive <change-name>`
+  - `openspec-sync <change-name>`
+  - `openspec-archive <change-name>`
 - Locally commit the working OpenSpec artifacts and associated project changes:
   - `git add ./openspec/ <changed-files-and-or-directories>`, e.g.:
     ```bash
@@ -246,17 +246,17 @@ Can be used for straightforward changes that require some upfront investigation 
 ### Iterative Exploration to Implementation
 Can be used for complex changes or changes with unclear requirements.
 - Interactively research and investigate a change with the user:
-  - `opsx-explore <topic>`
+  - `openspec-explore <topic>`
 - Iteratively generate the OpenSpec change artifacts:
-  - `opsx-new <change-name>`
-  - `opsx-continue <change-name>` iteratively and interactively with the user until all artifacts have been accepted.
+  - `openspec-new <change-name>`
+  - `openspec-continue <change-name>` iteratively and interactively with the user until all artifacts have been accepted.
 - Implement and verify the change:
-  - `opsx-apply <change-name>`
+  - `openspec-apply <change-name>`
   - See [Edit-Build-Test Commands (MANDATORY)](#edit-build-test-commands-mandatory) for the required commands to use to implement the change.
-  - `opsx-verify <change-name>`
+  - `nhc-opsx-verify <change-name>`
 - Archive the completed OpenSpec change:
-  - `opsx-sync <change-name>`
-  - `opsx-archive <change-name>`
+  - `openspec-sync <change-name>`
+  - `openspec-archive <change-name>`
 - Locally commit the working OpenSpec artifacts and associated project changes:
   - `git add ./openspec/ <changed-files-and-or-directories>`, e.g.:
     ```bash
