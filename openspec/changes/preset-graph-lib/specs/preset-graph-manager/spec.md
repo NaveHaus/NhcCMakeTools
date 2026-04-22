@@ -58,6 +58,28 @@ For each JSON object contained in one of those supported root arrays, the Manage
 - **WHEN** the Manager ingests preset collections from that file
 - **THEN** the `PresetModel` contains one `ConfigurePreset`, one `BuildPreset`, one `TestPreset`, one `PackagePreset`, and one `WorkflowPreset` originating from that file
 
+### Requirement: Condition Parsing During Ingestion
+When the Manager ingests a preset type that supports `condition`, it SHALL parse the raw JSON `condition` field into the preset's typed condition declaration.
+
+The typed condition declaration SHALL distinguish field absence, explicit `null`, and an evaluable Condition AST.
+
+If condition parsing fails, the Manager SHALL retain the preset but mark it Unresolved with reason `InvalidCondition`.
+
+#### Scenario: Ingesting a boolean condition
+- **GIVEN** a preset object contains `"condition": true`
+- **WHEN** the Manager ingests that preset
+- **THEN** the preset stores a parsed constant-true condition
+
+#### Scenario: Ingesting a null condition
+- **GIVEN** a preset object contains `"condition": null`
+- **WHEN** the Manager ingests that preset
+- **THEN** the preset stores an explicit enabled, non-inheritable condition marker
+
+#### Scenario: Reporting invalid condition syntax
+- **GIVEN** a preset object contains an invalid condition value
+- **WHEN** the Manager ingests that preset
+- **THEN** that preset is marked Unresolved with reason `InvalidCondition`
+
 ### Requirement: Per-File Preset Refresh
 When the Manager reprocesses a preset file, it SHALL replace the set of presets previously ingested from that file instead of appending duplicate presets to `PresetModel`.
 

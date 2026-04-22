@@ -13,6 +13,51 @@ If any macro expansion required to evaluate a Condition yields an ExpansionResul
 - **WHEN** a Condition depends on `$env{DOES_NOT_EXIST}` and neither preset nor parent environment contains it
 - **THEN** the evaluation result is indeterminate (unknown)
 
+### Requirement: Condition JSON Wire Forms
+The system SHALL parse a preset `condition` JSON value according to the CMake wire format.
+
+- A boolean value SHALL parse as a constant condition with the same boolean value.
+- A top-level `null` value SHALL parse as an explicit enabled, non-inheritable condition marker.
+- A JSON object SHALL parse as a typed condition object.
+- Nested conditions inside `condition` / `conditions` MAY be booleans or objects, but SHALL NOT be `null`.
+
+#### Scenario: Parsing a boolean condition value
+- **WHEN** the parser receives the JSON value `true` as a top-level preset `condition`
+- **THEN** it produces a constant condition that evaluates to true
+
+#### Scenario: Parsing a null condition value
+- **WHEN** the parser receives the JSON value `null` as a top-level preset `condition`
+- **THEN** it produces an explicit enabled, non-inheritable condition marker
+
+### Requirement: Condition Object Parsing
+The system SHALL parse condition objects using the CMake-defined `type` field and the type-specific member names associated with that type.
+
+- `const` SHALL use `value`
+- `equals` and `notEquals` SHALL use `lhs` and `rhs`
+- `inList` and `notInList` SHALL use `string` and `list`
+- `matches` and `notMatches` SHALL use `string` and `regex`
+- `anyOf` and `allOf` SHALL use `conditions`
+- `not` SHALL use `condition`
+
+#### Scenario: Parsing an equals condition object
+- **WHEN** the parser receives `{"type":"equals","lhs":"${presetName}","rhs":"default"}`
+- **THEN** it produces an equals condition with `lhs` and `rhs` taken from those fields
+
+#### Scenario: Parsing an anyOf condition object
+- **WHEN** the parser receives `{"type":"anyOf","conditions":[false,{"type":"const","value":true}]}`
+- **THEN** it produces an anyOf condition containing those two parsed child conditions
+
+### Requirement: Condition Parse Failure Reporting
+If a `condition` value does not conform to the supported CMake wire format, the system SHALL report condition-parse failure instead of synthesizing a placeholder AST.
+
+#### Scenario: Rejecting a nested null condition
+- **WHEN** the parser receives `{"type":"not","condition":null}`
+- **THEN** it reports condition-parse failure
+
+#### Scenario: Rejecting an unknown condition type
+- **WHEN** the parser receives `{"type":"platformEquals","lhs":"x","rhs":"y"}`
+- **THEN** it reports condition-parse failure
+
 ### Requirement: Constant Condition
 The system SHALL support a constant condition that always evaluates to a given boolean value.
 
@@ -54,7 +99,7 @@ The system SHALL support a "matches" and "notMatches" condition comparing a stri
 - **THEN** the condition evaluates to true
 
 ### Requirement: Boolean Logic Conditions
-The system SHALL support logical grouping conditions: "anyOf", "allOf", and "not", which contain other Condition objects.
+The system SHALL support logical grouping conditions: "anyOf", "allOf", and "not", which contain other parsed Condition values.
 
 #### Scenario: Evaluating an allOf condition
 - **WHEN** an "allOf" condition contains two sub-conditions, and one evaluates to false

@@ -42,9 +42,18 @@ To build an interactive UI, we need a data structure that can parse the raw, une
 - Maintaining separate per-node resolution state only, without a graph-level state. Rejected because the UI still needs a coarse structural readiness signal.
 
 ### 4. Condition Abstract Syntax Tree (AST)
-**Decision**: CMake preset `condition` objects will be parsed into an AST where each node represents a condition type (e.g., `Equals`, `AllOf`, `InList`). The AST nodes will provide an `Evaluate(MacroContext)` method.
-**Rationale**: Conditions can be deeply nested and contain macros. An AST allows recursive evaluation against the current user context.
-**Alternatives Considered**: Flattening conditions into a list. Rejected because CMake conditions inherently support nested boolean logic (`anyOf`, `allOf`, `not`).
+**Decision**: CMake preset `condition` values will be parsed from their JSON wire format into a condition representation that distinguishes field absence, explicit `null`, and an evaluable AST. Top-level boolean values normalize to `ConstCondition`, top-level objects parse into typed AST nodes by `type`, and top-level `null` is represented as an explicit enabled/non-inheritable condition marker rather than as `ConstCondition(true)`.
+**Rationale**: Conditions can be deeply nested and contain macros, so an AST remains the right evaluation structure. However, CMake also gives `condition: null` distinct inheritance semantics, and that behavior cannot be implemented correctly if the library collapses everything into `optional<ConditionAst>`. Preserving the wire-format distinction also lets the manager reject malformed condition payloads instead of synthesizing placeholder ASTs.
+**Alternatives Considered**:
+- Flattening conditions into a list. Rejected because CMake conditions inherently support nested boolean logic (`anyOf`, `allOf`, `not`).
+- Treating `null` as `ConstCondition(true)`. Rejected because CMake specifies that `null` is not inherited by descendants, while a constant-true condition would be.
+- Deferring condition parsing until evaluation time. Rejected because it obscures malformed preset data and leaves the ingestion pipeline under-specified.
+
+**Condition Parsing Policy (v1)**:
+- A preset's top-level `condition` field MAY be absent, boolean, `null`, or an object.
+- Nested conditions inside `condition` / `conditions` MAY be booleans or objects, but SHALL NOT be `null`.
+- Condition object parsing SHALL use the CMake wire-format field names (`type`, `value`, `lhs`, `rhs`, `string`, `list`, `regex`, `conditions`, `condition`).
+- A parse failure in a condition value is a non-fatal diagnostic outcome and SHALL be surfaced explicitly rather than replaced with a synthetic fallback AST.
 
 ### 5. Retaining "Disabled" Nodes
 **Decision**: Presets that are not available (e.g., condition evaluates to `false` or the preset uses `$vendor{...}`) are kept in the graph but marked with `Disabled` availability.
@@ -109,6 +118,7 @@ To build an interactive UI, we need a data structure that can parse the raw, une
 - `MissingMacro`: An include path could not be fully expanded due to missing macro or environment values.
 - `UnsupportedMacro`: A string used a macro that is disallowed by the preset specification.
 - `EnvironmentCycle`: Environment values contain a reference cycle.
+- `InvalidCondition`: A preset's `condition` field cannot be parsed according to the supported CMake wire format.
 - `IncludeCycle`: Preset files contain an include cycle.
 - `InheritanceCycle`: Presets contain an inheritance cycle.
 - `CMakeMinimumRequiredNotMet`: A preset file requires a newer CMake than the simulated version.
@@ -144,12 +154,17 @@ To build an interactive UI, we need a data structure that can parse the raw, une
 - This hierarchy ensures type-specific validation and prevents invalid field combinations from being exposed through the typed API (e.g., `generator` on a BuildPreset, or workflow-only consumers reading unsupported base fields).
 - The `PresetModel` stores presets polymorphically and provides type-safe accessors for derived preset types.
 
+**Condition Field Representation (v1)**:
+- For preset types that support `condition`, the typed preset state SHALL distinguish no local `condition` field, explicit `condition: null`, and a parsed evaluable condition AST.
+- An explicit `condition: null` clears any inherited condition for the current preset and SHALL NOT itself become an inheritable condition for descendants.
+- Boolean condition values are normalized to constant-condition AST nodes after parsing.
+
 **Minimal Field Set (v1)**:
 - For this initial implementation, only fields required for graph resolution and macro expansion are modeled as typed members.
 - The preset's raw JSON and in-preset resolved state MAY carry additional CMake-defined fields beyond this minimal typed field set.
 - Type-specific fields beyond the minimal set (e.g., `jobs`, `targets`, `filter`) MAY be deferred to future changes.
 - The minimal typed fields are:
-  - Base `Preset`: `name`, `hidden`, `inherits`, `condition`, `environment`
+  - Base `Preset`: `name`, `hidden`, `inherits`, parsed `condition` declaration, `environment`
   - `ConfigurePreset`: `generator`, `installDir`
   - `BuildPreset`, `TestPreset`, `PackagePreset`: `configurePreset`, `inheritConfigureEnvironment`
   - `WorkflowPreset`: `steps` (as a list of step type/name pairs); unsupported common fields are not exposed through the typed API

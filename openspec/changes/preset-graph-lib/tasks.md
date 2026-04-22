@@ -74,6 +74,15 @@ Notes:
 - [x] 4.32 **RED**: Add a failing test for `NotCondition` that returns unknown when child is unknown.
 - [x] 4.33 **GREEN**: Update `NotCondition` to pass the test.
 - [x] 4.34 **REFACTOR**: Review new condition classes for clarity and consistency.
+- [ ] 4.35 **RED**: Add a failing test verifying that a top-level JSON boolean `condition` parses as a constant condition.
+- [ ] 4.36 **GREEN**: Implement the JSON parser entry point for boolean condition values.
+- [ ] 4.37 **RED**: Add a failing test verifying that a JSON object `condition` with `type: "equals"` parses into the corresponding condition node.
+- [ ] 4.38 **GREEN**: Implement object-type dispatch for JSON condition parsing.
+- [ ] 4.39 **RED**: Add a failing test verifying that a top-level JSON `null` `condition` parses as an explicit enabled, non-inheritable condition marker.
+- [ ] 4.40 **GREEN**: Implement explicit-null condition parsing.
+- [ ] 4.41 **RED**: Add a failing test verifying that invalid wire-format cases such as nested `null` or an unknown `type` report parse failure.
+- [ ] 4.42 **GREEN**: Implement condition parse-failure reporting.
+- [ ] 4.43 **REFACTOR**: Review JSON condition parsing for completeness and short-circuit semantics.
 
 ## 5. preset-include-graph
 
@@ -123,6 +132,10 @@ Notes:
 - [x] 6a.6 **GREEN**: Implement environment merge behavior to pass the test.
 - [x] 6a.6a **RED**: Add a failing test verifying that for a Build/Test/Package preset, `inheritConfigureEnvironment` merges the associated configure environment between inherited and explicit preset environment.
 - [x] 6a.6b **GREEN**: Implement `inheritConfigureEnvironment` merge behavior to pass the test.
+- [ ] 6a.6c **RED**: Add a failing test verifying that `condition: null` on a child preset clears an inherited disabling condition for that preset.
+- [ ] 6a.6d **GREEN**: Implement current-preset override semantics for explicit null conditions.
+- [ ] 6a.6e **RED**: Add a failing test verifying that a grandchild preset does not inherit an explicit null condition from its parent.
+- [ ] 6a.6f **GREEN**: Implement non-inheritance semantics for explicit null conditions.
 - [x] 6a.7 **RED**: Add a failing test that environment values can reference each other out of order using `$env{}`.
 - [x] 6a.8 **GREEN**: Implement environment expansion to pass the test.
 - [x] 6a.9 **RED**: Add a failing test that environment reference cycles are detected.
@@ -210,6 +223,13 @@ Refactor the preset model so each preset owns its raw JSON and current resolved 
 - [ ] 7.2y **RED**: Add a failing test verifying that Configure/Build/Test/Package presets populate the inheritance graph while Workflow presets remain available only through `PresetModel`.
 - [ ] 7.2z **GREEN**: Implement inheritance-graph population from ingested typed presets and exclude Workflow presets from inheritance nodes.
 - [ ] 7.2aa **REFACTOR**: Review the manager's JSON-to-model ingestion flow for clarity and idempotence.
+- [ ] 7.2ab **RED**: Add a failing test verifying that preset ingestion parses boolean and object `condition` values instead of substituting a placeholder AST.
+- [ ] 7.2ac **GREEN**: Implement condition-field parsing during preset ingestion.
+- [ ] 7.2ad **RED**: Add a failing test verifying that preset ingestion stores `condition: null` as an explicit enabled, non-inheritable condition marker.
+- [ ] 7.2ae **GREEN**: Implement explicit-null ingestion semantics.
+- [ ] 7.2af **RED**: Add a failing test verifying that an invalid condition value marks the preset Unresolved with reason `InvalidCondition` and leaves the manager state Unresolved.
+- [ ] 7.2ag **GREEN**: Implement invalid-condition diagnostics.
+- [ ] 7.2ah **REFACTOR**: Review manager-level condition parsing and diagnostics.
 - [x] 7.3 **RED**: Add a failing test that constructs a cyclic include dependency that the manager must detect.
 - [x] 7.4 **GREEN**: Implement the include cycle detection within the resolution loop and mark Unresolved with reason `IncludeCycle`.
 - [x] 7.5 **RED**: Add a failing test verifying the composite `Unresolved` state when the include graph is `Resolved` but the inheritance graph is `Unresolved`.

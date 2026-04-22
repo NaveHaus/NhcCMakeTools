@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Preset Payload Management
-The Inheritance Graph SHALL store Preset payloads containing a preset name, a hidden flag, an optional Condition AST, and a list of pending (unresolved) inheritance strings.
+The Inheritance Graph SHALL store Preset payloads containing a preset name, a hidden flag, a parsed condition declaration, and a list of pending (unresolved) inheritance strings.
 
 #### Scenario: Adding a preset payload
 - **WHEN** a Preset payload with name "debug" and pending inherit "base" is added
@@ -22,8 +22,22 @@ The Inheritance Graph SHALL detect cycles in preset inheritance links.
 - **THEN** the Inheritance Graph marks affected presets as Unresolved with reason `InheritanceCycle`
 - **AND** the Inheritance Graph state is Unresolved
 
+### Requirement: Condition Inheritance Semantics
+When the graph resolves inherited preset state, the `condition` field SHALL follow standard `inherits` precedence except for explicit `null`.
+
+- If a preset does not define a local `condition` field, it SHALL inherit the first available inheritable condition from its parents according to the `inherits` list order.
+- If a preset defines `condition: null`, that preset SHALL clear any inherited condition for itself.
+- An explicit `condition: null` SHALL NOT be inherited by descendant presets.
+
+#### Scenario: Null condition clears an inherited condition
+- **GIVEN** preset `P0` has condition `false`
+- **AND** preset `C` inherits from [`P0`] and defines `condition: null`
+- **WHEN** the graph resolves inherited preset state
+- **THEN** preset `C` has no effective evaluable condition
+- **AND** preset `C` is not disabled by `P0`'s condition
+
 ### Requirement: Condition Status Tracking
-The Inheritance Graph SHALL evaluate the Condition AST of each Preset payload using a provided Macro Context.
+The Inheritance Graph SHALL evaluate the effective condition state of each Preset payload using a provided Macro Context.
 
 The Inheritance Graph SHALL track a Preset availability status with at least:
 - Active
@@ -34,6 +48,7 @@ The Inheritance Graph SHALL track a Preset availability status with at least:
 The availability status SHALL be computed as follows:
 - If the Preset is hidden, it is Hidden.
 - Else, if the Preset uses `$vendor{...}` macros, it is Disabled.
+- Else, if the effective condition is absent or explicit `null`, it is Active.
 - Else, if the condition evaluates to false, it is Disabled.
 - Else, if the condition is indeterminate (unknown), it is Unknown.
 - Else, it is Active.
@@ -50,8 +65,20 @@ The availability status SHALL be computed as follows:
 - **WHEN** a Preset contains a string value using `$vendor{someMacro}`
 - **THEN** the Inheritance Graph reports the Preset's availability as Disabled
 
+#### Scenario: Explicit null condition is active
+- **WHEN** a Preset has an effective explicit `null` condition and is not hidden
+- **THEN** the Inheritance Graph reports the Preset's availability as Active
+
+### Requirement: Invalid Condition Diagnostics
+If a Preset payload carries a condition-parse failure, the Inheritance Graph SHALL mark that preset Unresolved with reason `InvalidCondition`.
+
+#### Scenario: Invalid condition object
+- **WHEN** a Preset payload contains a condition-parse failure
+- **THEN** that Preset is marked Unresolved with reason `InvalidCondition`
+- **AND** the Inheritance Graph state is Unresolved
+
 ### Requirement: Structural State Computation
-The Inheritance Graph SHALL compute its state: Empty (no nodes), Resolved (all inherits resolved AND all Preset availabilities are definitively Active/Hidden/Disabled), or Unresolved (missing inherit targets OR one or more Presets are Unknown due to missing macros or environment values).
+The Inheritance Graph SHALL compute its state: Empty (no nodes), Resolved (all inherits resolved AND all Preset availabilities are definitively Active/Hidden/Disabled), or Unresolved (missing inherit targets OR one or more Presets are Unknown due to missing macros or environment values OR one or more Presets have `InvalidCondition`).
 
 #### Scenario: Computing Unresolved state due to conditions
 - **WHEN** all inheritance links are resolved but one Preset's condition depends on a missing macro

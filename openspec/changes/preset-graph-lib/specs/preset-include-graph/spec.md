@@ -14,7 +14,7 @@ The Include Graph SHALL store File payloads containing:
 
 ### Requirement: Unresolved Reason Tracking
 The Include Graph SHALL support marking a file node as Unresolved with an UnresolvedReason.
-The UnresolvedReason enumeration SHALL include at least: `FileDoesNotExist`, `InvalidJson`, `MissingMacro`, `UnsupportedMacro`, `EnvironmentCycle`, `IncludeCycle`, `InheritanceCycle`, `CMakeMinimumRequiredNotMet`, `PresetVersionUnsupported`, `PresetVersionMissing`, and `IncludeFieldUnsupportedInPresetVersion`.
+The UnresolvedReason enumeration SHALL include at least: `FileDoesNotExist`, `InvalidJson`, `MissingMacro`, `UnsupportedMacro`, `EnvironmentCycle`, `InvalidCondition`, `IncludeCycle`, `InheritanceCycle`, `CMakeMinimumRequiredNotMet`, `PresetVersionUnsupported`, `PresetVersionMissing`, and `IncludeFieldUnsupportedInPresetVersion`.
 
 #### Scenario: Marking a file node as missing
 - **WHEN** a file node is created for a file path that cannot be loaded

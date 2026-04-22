@@ -16,7 +16,7 @@ All preset types SHALL be derived from a common base Preset class that defines f
 
 ### Requirement: Preset Type Hierarchy
 The system SHALL implement a class hierarchy for preset types:
-- A base `Preset` class SHALL define fields common to Configure, Build, Test, and Package presets: `name`, `hidden`, `inherits`, `condition`, `environment`.
+- A base `Preset` class SHALL define fields common to Configure, Build, Test, and Package presets: `name`, `hidden`, `inherits`, parsed `condition` declaration, `environment`.
 - `ConfigurePreset` SHALL derive from `Preset` and add: `generator`, `installDir`.
 - `BuildPreset` SHALL derive from `Preset` and add: `configurePreset`, `inheritConfigureEnvironment`.
 - `TestPreset` SHALL derive from `Preset` and add: `configurePreset`, `inheritConfigureEnvironment`.
@@ -41,6 +41,22 @@ The `PresetModel` SHALL store presets polymorphically and provide type-safe acce
 - **WHEN** the preset is queried
 - **THEN** its typed API does NOT expose `hidden`, `inherits`, `condition`, or `environment`
 - **AND** it exposes `name` and `steps`
+
+### Requirement: Condition Field Representation
+For preset types that support `condition`, the system SHALL represent the field so it can distinguish:
+- No local `condition` field was provided.
+- The preset explicitly provided `condition: null`.
+- The preset provided a parsed evaluable condition.
+
+An explicit `condition: null` SHALL clear any inherited condition for the current preset and SHALL NOT be inherited by descendant presets.
+
+#### Scenario: Explicit null clears the inherited condition chain
+- **GIVEN** preset `P0` has condition `false`
+- **AND** preset `C` inherits from [`P0`] and has `condition: null`
+- **AND** preset `G` inherits from [`C`] and does not define `condition`
+- **WHEN** the preset model resolves conditions
+- **THEN** preset `C` has no effective evaluable condition
+- **AND** preset `G` does not inherit an explicit null condition from `C`
 
 ### Requirement: Raw JSON And In-Preset Resolved State
 For each preset, the system SHALL retain:
@@ -189,7 +205,7 @@ The base `Preset` class SHALL expose:
 - `name` (string, required)
 - `hidden` (bool, optional, defaults to false)
 - `inherits` (list of strings, optional)
-- `condition` (Condition AST, optional)
+- `condition` (parsed condition declaration; may represent no local field, explicit `null`, or a Condition AST)
 - `environment` (map of string to optional string, optional)
 
 The `ConfigurePreset` class SHALL additionally expose:

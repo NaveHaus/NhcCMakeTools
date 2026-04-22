@@ -23,6 +23,7 @@ Last updated: 2026-04-21
 - v1 SHALL handle `CMakeUserPresets.json` by automatically including `CMakePresets.json`, but only when `CMakePresets.json` can be found at the same relative path.
 - The library contract SHALL remain diagnostic-friendly rather than strict-CMake for macro expansion semantics because the primary consumer is a dynamic UI.
 - End-to-end ingestion SHALL inspect `configurePresets`, `buildPresets`, `testPresets`, `packagePresets`, and `workflowPresets`, replace per-file preset contributions on reload, and populate the inheritance graph only from preset types that support inheritance.
+- Condition handling SHALL distinguish field absence, explicit `condition: null`, and parsed condition ASTs; explicit `null` clears inherited conditions for the current preset and is not inherited by descendants.
 
 ## Best-Practice Comparison
 | Decision | vs. Industry Standard | Alternatives | Gaps |
@@ -30,7 +31,7 @@ Last updated: 2026-04-21
 | D1: Dual DAGs | Aligned | Considered | Missing explicit handling for `CMakeUserPresets.json` implicit inclusion and user-vs-project include provenance from the CMake spec. |
 | D2: Topology vs Payload | Aligned | Considered | Stable file identity via normalized absolute paths is only partially propagated from design into normative specs/tasks. |
 | D3: Structural vs Cosmetic State | Room for improvement | Considered | The UI-oriented state model is coherent, but the artifacts do not clearly define the compatibility boundary with strict CMake evaluation semantics. |
-| D4: Condition AST | Room for improvement | Considered | The artifacts cover AST evaluation but not the full CMake condition wire format, especially boolean/null forms and parser responsibilities. |
+| D4: Condition AST | Aligned | Considered | The artifacts now cover the CMake condition wire format, including boolean/null/object parsing, explicit-null inheritance semantics, and parse-failure reporting. |
 | D5: Retaining Disabled Nodes | Aligned | Considered | The CMake manual says presets containing `$vendor{}` are ignored; the UI-facing “Disabled” representation is reasonable but should be framed more explicitly as a library-level interpretation. |
 | D6: Graceful Partial Macro Expansion | Room for improvement | Considered | The diagnostic-first deviation from CMake empty-string behavior is documented in design/spec, but not clearly bounded in proposal scope or compatibility language. |
 | D7: File Loader + `nlohmann/json` | Aligned | Considered | File loading, version enforcement, and JSON-to-model ingestion are now captured; remaining work is implementation-oriented. |
@@ -52,17 +53,20 @@ Last updated: 2026-04-21
   - `openspec/changes/preset-graph-lib/tasks.md`
 
 ### P0(2): CMake condition parsing semantics are incomplete
-- Status: Open
+- Status: Consistent
 - Notes:
-  - `design.md` says preset `condition` values will be parsed into an AST.
-  - `specs/preset-condition-ast/spec.md` and `tasks.md` only cover evaluating hand-constructed AST nodes.
-  - The CMake preset manual allows `condition` to be a boolean, `null`, or an object, and `null` has specific inheritance semantics.
-  - The artifacts do not define how JSON condition values are parsed, how `null` is represented, or how those semantics propagate through inheritance.
+  - `design.md` now defines condition parsing in terms of the CMake wire format and explicitly distinguishes absent condition fields, explicit `null`, and parsed AST values.
+  - `specs/preset-condition-ast/spec.md` now normatively covers boolean/null/object parsing, supported object member names, and parse-failure reporting.
+  - `specs/preset-model/spec.md` and `specs/preset-inheritance-graph/spec.md` now capture the inheritance semantics of explicit `condition: null`, including that it clears the current preset's inherited condition and is not inherited by descendants.
+  - `specs/preset-graph-manager/spec.md` now requires parsing condition fields during preset ingestion and reporting malformed conditions as `InvalidCondition`.
+  - `tasks.md` now includes explicit RED/GREEN coverage for JSON condition parsing, explicit-null inheritance behavior, and manager-level invalid-condition diagnostics.
 - Artifacts touched:
   - `openspec/changes/preset-graph-lib/design.md`
   - `openspec/changes/preset-graph-lib/specs/preset-condition-ast/spec.md`
   - `openspec/changes/preset-graph-lib/specs/preset-inheritance-graph/spec.md`
+  - `openspec/changes/preset-graph-lib/specs/preset-model/spec.md`
   - `openspec/changes/preset-graph-lib/specs/preset-graph-manager/spec.md`
+  - `openspec/changes/preset-graph-lib/specs/preset-include-graph/spec.md`
   - `openspec/changes/preset-graph-lib/tasks.md`
 
 ### P0(3): PresetModel resolved-state architecture overfits a synthetic resolved object
