@@ -8,7 +8,7 @@ The Presets Graph Manager SHALL own instances of the Include Graph and the Inher
 - **THEN** it contains empty, independent Include and Inheritance graphs
 
 ### Requirement: Context Application Loop
-The Presets Graph Manager SHALL orchestrate the resolution loop when a new Macro Context is applied, first resolving the Include graph, handling any newly discovered include file paths, and subsequently resolving the Inheritance graph.
+The Presets Graph Manager SHALL orchestrate the resolution loop when a new Macro Context is applied, first resolving the Include graph, handling any newly discovered include file paths, refreshing typed preset collections from successfully loaded files, and subsequently resolving the Inheritance graph.
 
 #### Scenario: Applying context discovers new files
 - **WHEN** a context is applied and an include string expands to a new file path "extra-presets.json"
@@ -45,6 +45,40 @@ If the file specifies `cmakeMinimumRequired`, the Manager SHALL associate it wit
 - **WHEN** a file is loaded and parsed as JSON but has no root `version` field
 - **THEN** the file node is marked Unresolved with reason `PresetVersionMissing`
 - **AND** the Manager does not process includes or presets from that file
+
+### Requirement: Preset Collection Ingestion
+For each successfully loaded preset file that remains eligible for preset processing, the Manager SHALL inspect the root arrays `configurePresets`, `buildPresets`, `testPresets`, `packagePresets`, and `workflowPresets`.
+
+If one of those supported root arrays is absent, the Manager SHALL treat it as empty.
+
+For each JSON object contained in one of those supported root arrays, the Manager SHALL create or refresh one typed preset in `PresetModel` whose concrete type is determined by the source array and whose raw/original JSON is the array element object.
+
+#### Scenario: Ingesting all supported preset collections from one file
+- **GIVEN** a loaded preset file contains one object in each of `configurePresets`, `buildPresets`, `testPresets`, `packagePresets`, and `workflowPresets`
+- **WHEN** the Manager ingests preset collections from that file
+- **THEN** the `PresetModel` contains one `ConfigurePreset`, one `BuildPreset`, one `TestPreset`, one `PackagePreset`, and one `WorkflowPreset` originating from that file
+
+### Requirement: Per-File Preset Refresh
+When the Manager reprocesses a preset file, it SHALL replace the set of presets previously ingested from that file instead of appending duplicate presets to `PresetModel`.
+
+#### Scenario: Reloading a file refreshes its preset contribution
+- **GIVEN** a preset file was previously ingested into `PresetModel`
+- **WHEN** the Manager reprocesses that same file after its preset collections change
+- **THEN** the previous presets from that file are removed or replaced before the new presets are published
+- **AND** the `PresetModel` does not contain duplicate presets from repeated ingestion of the same file
+
+### Requirement: Inheritance Graph Population From Ingested Presets
+After refreshing `PresetModel`, the Manager SHALL repopulate the Inheritance Graph from the typed presets currently present in the model.
+
+ConfigurePreset, BuildPreset, TestPreset, and PackagePreset instances SHALL contribute inheritance-graph payloads using their typed `name`, `hidden`, `inherits`, `condition`, and `environment` fields.
+
+WorkflowPreset instances SHALL remain queryable through `PresetModel` but SHALL NOT contribute inheritance-graph payloads or inheritance edges.
+
+#### Scenario: Workflow presets remain model-only for inheritance purposes
+- **GIVEN** the `PresetModel` contains a `ConfigurePreset` and a `WorkflowPreset`
+- **WHEN** the Manager refreshes the Inheritance Graph from the model
+- **THEN** the Inheritance Graph contains a payload for the `ConfigurePreset`
+- **AND** the Inheritance Graph does not contain a payload for the `WorkflowPreset`
 
 ### Requirement: Simulated CMake Version
 The Presets Graph Manager SHALL be configured with a simulated CMake version (major/minor/patch) used to validate preset file format constraints.

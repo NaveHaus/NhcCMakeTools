@@ -22,6 +22,7 @@ Last updated: 2026-04-21
 - The current design intentionally favors UI-visible diagnostics over strict CMake emulation for missing `$env{}` / `$penv{}` values.
 - v1 SHALL handle `CMakeUserPresets.json` by automatically including `CMakePresets.json`, but only when `CMakePresets.json` can be found at the same relative path.
 - The library contract SHALL remain diagnostic-friendly rather than strict-CMake for macro expansion semantics because the primary consumer is a dynamic UI.
+- End-to-end ingestion SHALL inspect `configurePresets`, `buildPresets`, `testPresets`, `packagePresets`, and `workflowPresets`, replace per-file preset contributions on reload, and populate the inheritance graph only from preset types that support inheritance.
 
 ## Best-Practice Comparison
 | Decision | vs. Industry Standard | Alternatives | Gaps |
@@ -32,24 +33,22 @@ Last updated: 2026-04-21
 | D4: Condition AST | Room for improvement | Considered | The artifacts cover AST evaluation but not the full CMake condition wire format, especially boolean/null forms and parser responsibilities. |
 | D5: Retaining Disabled Nodes | Aligned | Considered | The CMake manual says presets containing `$vendor{}` are ignored; the UI-facing “Disabled” representation is reasonable but should be framed more explicitly as a library-level interpretation. |
 | D6: Graceful Partial Macro Expansion | Room for improvement | Considered | The diagnostic-first deviation from CMake empty-string behavior is documented in design/spec, but not clearly bounded in proposal scope or compatibility language. |
-| D7: File Loader + `nlohmann/json` | Room for improvement | Considered | File loading/version enforcement is specified, but end-to-end parsing of preset arrays into the typed model/graphs is not. |
+| D7: File Loader + `nlohmann/json` | Aligned | Considered | File loading, version enforcement, and JSON-to-model ingestion are now captured; remaining work is implementation-oriented. |
 | D8: Non-Fatal Resolution Diagnostics | Aligned | Considered | The non-fatal diagnostic model fits interactive tooling well, but the artifacts do not yet distinguish project-provided includes from user-local includes as the CMake docs do. |
 | D9: Preset Model Layer | Room for improvement | Considered | The type hierarchy aligns with CMake preset categories, but workflow step semantics and full configure/build/test/package interactions remain under-specified. |
 
 ## Issue List
 
 ### P0(1): End-to-end preset ingestion is under-specified
-- Status: Open
+- Status: Consistent
 - Notes:
-  - `proposal.md` and `design.md` describe parsing raw preset files into a typed model that drives graph resolution.
-  - `specs/preset-graph-manager/spec.md` currently stops at file loading, version checks, include handling, and composite state.
-  - `tasks.md` does not include explicit RED/GREEN coverage for parsing `configurePresets`, `buildPresets`, `testPresets`, `packagePresets`, and `workflowPresets` from loaded JSON into `PresetModel` and the graph structures.
-  - This leaves a major implementation-readiness gap between “load JSON” and “evaluate actual CMake preset collections”.
+  - `design.md` now defines a JSON-to-model ingestion policy covering all supported root preset arrays, per-file replacement semantics, and the boundary between model storage and inheritance-graph participation.
+  - `specs/preset-graph-manager/spec.md` now normatively requires ingestion of `configurePresets`, `buildPresets`, `testPresets`, `packagePresets`, and `workflowPresets` into `PresetModel`.
+  - `specs/preset-graph-manager/spec.md` also now requires re-ingesting a file to refresh that file's preset contribution instead of appending duplicates, and it defines that Workflow presets remain model-only for inheritance purposes.
+  - `tasks.md` now includes explicit RED/GREEN coverage for root-array ingestion, per-file refresh, and inheritance-graph population from typed presets.
 - Artifacts touched:
-  - `openspec/changes/preset-graph-lib/proposal.md`
   - `openspec/changes/preset-graph-lib/design.md`
   - `openspec/changes/preset-graph-lib/specs/preset-graph-manager/spec.md`
-  - `openspec/changes/preset-graph-lib/specs/preset-model/spec.md`
   - `openspec/changes/preset-graph-lib/tasks.md`
 
 ### P0(2): CMake condition parsing semantics are incomplete

@@ -203,6 +203,13 @@ Refactor the preset model so each preset owns its raw JSON and current resolved 
 - [x] 7.2r **GREEN**: Implement missing-version handling to pass the test.
 - [x] 7.2s **RED**: Add a failing test verifying that when a file declares `version` < 4 and specifies `include`, the file node is marked Unresolved with reason `IncludeFieldUnsupportedInPresetVersion`.
 - [x] 7.2t **GREEN**: Implement include-field version enforcement to pass the test.
+- [ ] 7.2u **RED**: Add a failing test verifying that a successfully loaded preset file populates `PresetModel` from `configurePresets`, `buildPresets`, `testPresets`, `packagePresets`, and `workflowPresets`.
+- [ ] 7.2v **GREEN**: Implement supported root-array ingestion into typed presets to pass the test.
+- [ ] 7.2w **RED**: Add a failing test verifying that re-ingesting the same preset file replaces that file's previously published presets instead of appending duplicates to `PresetModel`.
+- [ ] 7.2x **GREEN**: Implement per-file preset refresh semantics to pass the test.
+- [ ] 7.2y **RED**: Add a failing test verifying that Configure/Build/Test/Package presets populate the inheritance graph while Workflow presets remain available only through `PresetModel`.
+- [ ] 7.2z **GREEN**: Implement inheritance-graph population from ingested typed presets and exclude Workflow presets from inheritance nodes.
+- [ ] 7.2aa **REFACTOR**: Review the manager's JSON-to-model ingestion flow for clarity and idempotence.
 - [x] 7.3 **RED**: Add a failing test that constructs a cyclic include dependency that the manager must detect.
 - [x] 7.4 **GREEN**: Implement the include cycle detection within the resolution loop and mark Unresolved with reason `IncludeCycle`.
 - [x] 7.5 **RED**: Add a failing test verifying the composite `Unresolved` state when the include graph is `Resolved` but the inheritance graph is `Unresolved`.

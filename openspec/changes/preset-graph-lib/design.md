@@ -82,6 +82,13 @@ To build an interactive UI, we need a data structure that can parse the raw, une
 - The graph manager computes the maximum supported preset file `version` from the simulated CMake version.
 - Files with an unsupported preset file `version` are retained as Unresolved with reason `PresetVersionUnsupported`.
 
+**JSON-to-Model Ingestion Policy (v1)**:
+- After a preset file is successfully loaded, parsed, and accepted for further processing, the manager SHALL inspect the root arrays `configurePresets`, `buildPresets`, `testPresets`, `packagePresets`, and `workflowPresets`.
+- Each object found in one of those arrays becomes a typed preset in `PresetModel`, with the preset type determined by the source array and the original array element retained as that preset's raw JSON.
+- If a file is reprocessed, the manager replaces that file's previously ingested presets instead of appending duplicates.
+- Configure, Build, Test, and Package presets are projected into the inheritance graph from their typed common fields; Workflow presets remain available in `PresetModel` but do not contribute inheritance nodes or edges.
+- Missing supported root arrays are treated as empty collections.
+
 **Derived Macro Policy (v1)**:
 - The graph manager SHALL inject macro values that are derivable from the current graph state.
   - File-derived example: `${fileDir}` from the including file node.
