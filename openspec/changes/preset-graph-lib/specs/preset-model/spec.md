@@ -42,6 +42,22 @@ The `PresetModel` SHALL store presets polymorphically and provide type-safe acce
 - **THEN** its typed API does NOT expose `hidden`, `inherits`, `condition`, or `environment`
 - **AND** it exposes `name` and `steps`
 
+### Requirement: Workflow Step Compatibility
+The system SHALL model workflow presets using the CMake workflow-step constraints.
+
+The first workflow step SHALL reference a Configure preset.
+
+Each subsequent workflow step SHALL reference a Build, Test, or Package preset whose `configurePreset` resolves to the same configure preset selected by the first step.
+
+Workflow-step violations SHALL be representable as diagnostics associated with the workflow preset without requiring the workflow preset to participate in inheritance resolution.
+
+#### Scenario: Validating workflow steps against the initial configure preset
+- **GIVEN** a WorkflowPreset whose first step references Configure preset "cfg"
+- **AND** its second step references Build preset "bld"
+- **AND** Build preset "bld" resolves `configurePreset` to "cfg"
+- **WHEN** the workflow preset is validated
+- **THEN** the workflow preset is considered structurally valid
+
 ### Requirement: Condition Field Representation
 For preset types that support `condition`, the system SHALL represent the field so it can distinguish:
 - No local `condition` field was provided.
@@ -83,6 +99,17 @@ The system SHALL NOT require a separate model-managed `ResolvedPreset` or `RawRe
 - **WHEN** the preset refreshes its resolved state
 - **THEN** the preset retains the original raw JSON `cacheVariables`
 - **AND** the preset's resolved state can retain `cacheVariables` as structured JSON
+
+### Requirement: Diagnostic-Friendly Resolved State
+The preset resolved-state model SHALL preserve unresolved macro references exactly as produced by the library's macro-expansion rules.
+
+The system SHALL NOT coerce missing `$env{}` / `$penv{}` references to empty strings for the sake of strict CMake emulation.
+
+#### Scenario: Preserving a missing environment reference in resolved state
+- **GIVEN** a ConfigurePreset whose raw JSON `binaryDir` is `"$env{MISSING}/build"`
+- **WHEN** the preset refreshes its resolved state with no `MISSING` value in preset or parent environment
+- **THEN** the preset's resolved state retains `"$env{MISSING}/build"` as the current value
+- **AND** the `binaryDir` entry is not marked fully resolved
 
 ### Requirement: Preset-Associated Macro Population
 When expanding a macro-expandable field that belongs to a specific preset, the system SHALL populate the Macro Context with preset-associated macro values for that preset.

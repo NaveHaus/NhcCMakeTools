@@ -8,7 +8,7 @@ To build an interactive UI, we need a data structure that can parse the raw, une
 
 **Goals:**
 - Provide a robust C++ data model for CMake preset inheritance and file inclusion.
-- Accurately represent the constraints of the CMake specification (e.g., uniqueness of names, specific macro rules).
+- Represent the structural constraints of the CMake preset specification closely enough for interactive tooling, while explicitly documenting the v1 cases where the library keeps more diagnostic information than strict CMake execution would.
 - Allow dynamic re-evaluation of the graph structure based on a mutable "macro context".
 - Clearly distinguish between the structural state of the graph (topology) and the data within the nodes.
 - Expose clear APIs to query node states for UI rendering (e.g., availability Active/Hidden/Disabled/Unknown and per-node diagnostics).
@@ -17,6 +17,7 @@ To build an interactive UI, we need a data structure that can parse the raw, une
 - Writing or serializing JSON files back to disk (this is a read/evaluate library).
 - Execution or invocation of CMake itself.
 - Validating the actual build configurations (we only validate the structural rules of the preset JSON spec).
+- Strict emulation of every CMake runtime macro-expansion behavior; v1 intentionally preserves unresolved values when that produces clearer diagnostics for interactive tooling.
 
 ## Decisions
 
@@ -40,6 +41,11 @@ To build an interactive UI, we need a data structure that can parse the raw, une
 **Alternatives Considered**:
 - A single global "resolved" flag that requires all macros everywhere to be fully expanded. Rejected because it makes the UI unusable during incremental edits.
 - Maintaining separate per-node resolution state only, without a graph-level state. Rejected because the UI still needs a coarse structural readiness signal.
+
+**Library Contract Boundary (v1)**:
+- Graph topology, preset typing, inheritance rules, include rules, and workflow-step compatibility SHALL follow the documented CMake preset specification.
+- Macro expansion SHALL remain diagnostic-friendly where the library intentionally diverges from CMake execution semantics (for example, missing `$env{}` / `$penv{}` remain unresolved instead of collapsing to an empty string).
+- These deviations SHALL be described as library-defined behavior for interactive tooling rather than as strict CMake emulation.
 
 ### 4. Condition Abstract Syntax Tree (AST)
 **Decision**: CMake preset `condition` values will be parsed from their JSON wire format into a condition representation that distinguishes field absence, explicit `null`, and an evaluable AST. Top-level boolean values normalize to `ConstCondition`, top-level objects parse into typed AST nodes by `type`, and top-level `null` is represented as an explicit enabled/non-inheritable condition marker rather than as `ConstCondition(true)`.
@@ -97,6 +103,11 @@ To build an interactive UI, we need a data structure that can parse the raw, une
 - If a file is reprocessed, the manager replaces that file's previously ingested presets instead of appending duplicates.
 - Configure, Build, Test, and Package presets are projected into the inheritance graph from their typed common fields; Workflow presets remain available in `PresetModel` but do not contribute inheritance nodes or edges.
 - Missing supported root arrays are treated as empty collections.
+
+**User Preset Root Policy (v1)**:
+- When the manager processes a file named `CMakeUserPresets.json`, it SHALL attempt to auto-include `CMakePresets.json` from the same directory before processing explicit include entries from the user preset file.
+- If no sibling `CMakePresets.json` exists, the manager SHALL proceed without creating a synthetic include.
+- The synthetic include is directional from `CMakeUserPresets.json` to `CMakePresets.json`; the project preset file SHALL NOT implicitly include the user preset file.
 
 **Derived Macro Policy (v1)**:
 - The graph manager SHALL inject macro values that are derivable from the current graph state.
@@ -168,6 +179,12 @@ To build an interactive UI, we need a data structure that can parse the raw, une
   - `ConfigurePreset`: `generator`, `installDir`
   - `BuildPreset`, `TestPreset`, `PackagePreset`: `configurePreset`, `inheritConfigureEnvironment`
   - `WorkflowPreset`: `steps` (as a list of step type/name pairs); unsupported common fields are not exposed through the typed API
+
+**Workflow Validation Policy (v1)**:
+- A workflow preset's first step SHALL reference a Configure preset.
+- Each subsequent step SHALL reference a Build, Test, or Package preset rather than another Configure preset.
+- Each subsequent step's referenced preset SHALL resolve to the same `configurePreset` selected by the first workflow step.
+- Workflow-step violations are non-fatal diagnostics attached to the workflow preset; they do not cause the workflow preset to participate in the inheritance graph.
 
 ## Risks / Trade-offs
 

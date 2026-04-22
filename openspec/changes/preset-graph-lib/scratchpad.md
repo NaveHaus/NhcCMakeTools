@@ -28,15 +28,15 @@ Last updated: 2026-04-21
 ## Best-Practice Comparison
 | Decision | vs. Industry Standard | Alternatives | Gaps |
 |----------|----------------------|-------------|------|
-| D1: Dual DAGs | Aligned | Considered | Missing explicit handling for `CMakeUserPresets.json` implicit inclusion and user-vs-project include provenance from the CMake spec. |
+| D1: Dual DAGs | Aligned | Considered | The artifacts now capture `CMakeUserPresets.json` implicit inclusion as a directional user-to-project include relationship for v1. |
 | D2: Topology vs Payload | Aligned | Considered | Stable file identity via normalized absolute paths is only partially propagated from design into normative specs/tasks. |
-| D3: Structural vs Cosmetic State | Room for improvement | Considered | The UI-oriented state model is coherent, but the artifacts do not clearly define the compatibility boundary with strict CMake evaluation semantics. |
+| D3: Structural vs Cosmetic State | Aligned | Considered | The artifacts now state the v1 compatibility boundary: structural rules follow CMake, while macro expansion remains diagnostic-friendly where documented. |
 | D4: Condition AST | Aligned | Considered | The artifacts now cover the CMake condition wire format, including boolean/null/object parsing, explicit-null inheritance semantics, and parse-failure reporting. |
 | D5: Retaining Disabled Nodes | Aligned | Considered | The CMake manual says presets containing `$vendor{}` are ignored; the UI-facing “Disabled” representation is reasonable but should be framed more explicitly as a library-level interpretation. |
-| D6: Graceful Partial Macro Expansion | Room for improvement | Considered | The diagnostic-first deviation from CMake empty-string behavior is documented in design/spec, but not clearly bounded in proposal scope or compatibility language. |
+| D6: Graceful Partial Macro Expansion | Aligned | Considered | The proposal, design, and specs now bound this behavior explicitly as a diagnostic-friendly library contract rather than strict CMake emulation. |
 | D7: File Loader + `nlohmann/json` | Aligned | Considered | File loading, version enforcement, and JSON-to-model ingestion are now captured; remaining work is implementation-oriented. |
 | D8: Non-Fatal Resolution Diagnostics | Aligned | Considered | The non-fatal diagnostic model fits interactive tooling well, but the artifacts do not yet distinguish project-provided includes from user-local includes as the CMake docs do. |
-| D9: Preset Model Layer | Room for improvement | Considered | The type hierarchy aligns with CMake preset categories, but workflow step semantics and full configure/build/test/package interactions remain under-specified. |
+| D9: Preset Model Layer | Aligned | Considered | Workflow step compatibility and non-fatal validation diagnostics are now captured in design/spec/tasks for v1. |
 
 ## Issue List
 
@@ -82,12 +82,14 @@ Last updated: 2026-04-21
   - `openspec/changes/preset-graph-lib/tasks.md`
 
 ### P1(1): `CMakeUserPresets.json` behavior is not modeled or explicitly deferred
-- Status: Open
+- Status: Consistent
 - Notes:
   - The CMake manual treats `CMakePresets.json` and `CMakeUserPresets.json` as first-class roots with important behavioral differences.
   - `CMakeUserPresets.json` implicitly includes `CMakePresets.json`, and inheritance from `CMakePresets.json` into `CMakeUserPresets.json` is directional.
   - User clarification: v1 SHALL support `CMakeUserPresets.json` by auto-including `CMakePresets.json` only when that file exists at the same relative path.
-  - The current artifacts still do not capture that rule normatively or in tasks.
+  - `proposal.md` and `design.md` now describe the v1 user-root behavior explicitly.
+  - `specs/preset-graph-manager/spec.md` and `specs/preset-include-graph/spec.md` now normatively define the sibling auto-include rule and its one-way direction.
+  - `tasks.md` now includes explicit RED/GREEN coverage for implicit user-root inclusion and the no-sibling case.
 - Artifacts touched:
   - `openspec/changes/preset-graph-lib/proposal.md`
   - `openspec/changes/preset-graph-lib/design.md`
@@ -96,11 +98,13 @@ Last updated: 2026-04-21
   - `openspec/changes/preset-graph-lib/tasks.md`
 
 ### P1(2): Workflow preset interaction rules are under-specified
-- Status: Open
+- Status: Consistent
 - Notes:
   - `specs/preset-model/spec.md` captures workflow step shape (`type` + `name`) but not CMake’s workflow constraints.
   - The CMake manual requires the first workflow step to be `configure`, and all subsequent steps to be non-configure presets whose `configurePreset` matches the initial configure preset.
-  - No artifact currently defines validation behavior, diagnostics, or task coverage for these constraints.
+  - `design.md` now defines workflow-step compatibility as a v1 policy and frames violations as non-fatal diagnostics.
+  - `specs/preset-model/spec.md` and `specs/preset-graph-manager/spec.md` now normatively define workflow validation behavior and diagnostics.
+  - `tasks.md` now includes explicit RED/GREEN coverage for first-step validation, configure-preset matching, and workflow diagnostics.
 - Artifacts touched:
   - `openspec/changes/preset-graph-lib/design.md`
   - `openspec/changes/preset-graph-lib/specs/preset-model/spec.md`
@@ -108,12 +112,13 @@ Last updated: 2026-04-21
   - `openspec/changes/preset-graph-lib/tasks.md`
 
 ### P1(3): The strict-CMake vs diagnostic-library boundary is unclear
-- Status: Open
+- Status: Consistent
 - Notes:
   - `design.md` and the macro/preset specs intentionally keep missing `$env{}` / `$penv{}` references unresolved so the UI can surface missing inputs.
-  - The proposal simultaneously claims the library will “accurately represent the constraints of the CMake specification”.
+  - The proposal previously overstated the contract as strict CMake accuracy without clarifying the interactive diagnostic boundary.
   - User clarification: the library SHALL expose diagnostic-friendly macro semantics only; strict CMake emulation is not the contract for v1.
-  - The tradeoff is defensible, but the artifacts still do not state that boundary clearly enough.
+  - `proposal.md` and `design.md` now state that v1 follows CMake structural rules while preserving diagnostic-friendly macro behavior where documented.
+  - `specs/preset-macro-context/spec.md` and `specs/preset-model/spec.md` now normatively bind unresolved macro handling as library-defined behavior rather than strict CMake emulation.
 - Artifacts touched:
   - `openspec/changes/preset-graph-lib/proposal.md`
   - `openspec/changes/preset-graph-lib/design.md`

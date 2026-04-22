@@ -216,6 +216,9 @@ Refactor the preset model so each preset owns its raw JSON and current resolved 
 - [x] 7.2r **GREEN**: Implement missing-version handling to pass the test.
 - [x] 7.2s **RED**: Add a failing test verifying that when a file declares `version` < 4 and specifies `include`, the file node is marked Unresolved with reason `IncludeFieldUnsupportedInPresetVersion`.
 - [x] 7.2t **GREEN**: Implement include-field version enforcement to pass the test.
+- [ ] 7.2ta **RED**: Add a failing test verifying that a root `CMakeUserPresets.json` implicitly includes a sibling `CMakePresets.json` when present and does not synthesize that include when the sibling file is absent.
+- [ ] 7.2tb **GREEN**: Implement implicit `CMakeUserPresets.json` root inclusion semantics to pass the test.
+- [ ] 7.2tc **REFACTOR**: Review user-root include handling for directionality and idempotent refresh behavior.
 - [ ] 7.2u **RED**: Add a failing test verifying that a successfully loaded preset file populates `PresetModel` from `configurePresets`, `buildPresets`, `testPresets`, `packagePresets`, and `workflowPresets`.
 - [ ] 7.2v **GREEN**: Implement supported root-array ingestion into typed presets to pass the test.
 - [ ] 7.2w **RED**: Add a failing test verifying that re-ingesting the same preset file replaces that file's previously published presets instead of appending duplicates to `PresetModel`.
@@ -230,6 +233,9 @@ Refactor the preset model so each preset owns its raw JSON and current resolved 
 - [ ] 7.2af **RED**: Add a failing test verifying that an invalid condition value marks the preset Unresolved with reason `InvalidCondition` and leaves the manager state Unresolved.
 - [ ] 7.2ag **GREEN**: Implement invalid-condition diagnostics.
 - [ ] 7.2ah **REFACTOR**: Review manager-level condition parsing and diagnostics.
+- [ ] 7.2ai **RED**: Add a failing test verifying that a workflow preset's first step must be a Configure preset and that subsequent steps must reference Build/Test/Package presets whose `configurePreset` matches the initial configure step.
+- [ ] 7.2aj **GREEN**: Implement workflow preset validation and non-fatal workflow diagnostics.
+- [ ] 7.2ak **REFACTOR**: Review workflow validation coverage and diagnostic wording.
 - [x] 7.3 **RED**: Add a failing test that constructs a cyclic include dependency that the manager must detect.
 - [x] 7.4 **GREEN**: Implement the include cycle detection within the resolution loop and mark Unresolved with reason `IncludeCycle`.
 - [x] 7.5 **RED**: Add a failing test verifying the composite `Unresolved` state when the include graph is `Resolved` but the inheritance graph is `Unresolved`.

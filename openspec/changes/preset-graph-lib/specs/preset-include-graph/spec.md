@@ -32,6 +32,20 @@ When an include string expands to a relative path, it SHALL be interpreted relat
 - **WHEN** an include string "d/e/linux-presets.json" expands to a file path that exists in the graph
 - **THEN** the pending include is resolved, an edge is created, and the pending include is removed
 
+### Requirement: User Preset Root Inclusion
+When a file node represents `CMakeUserPresets.json`, the Include Graph SHALL be able to represent the CMake-defined implicit include of a sibling `CMakePresets.json`.
+
+If a sibling `CMakePresets.json` exists, the include relationship SHALL be directional from `CMakeUserPresets.json` to `CMakePresets.json`.
+
+If no sibling `CMakePresets.json` exists, the Include Graph SHALL NOT synthesize that edge.
+
+#### Scenario: User presets implicitly include project presets
+- **GIVEN** a file node for "./a/b/CMakeUserPresets.json"
+- **AND** a sibling file node exists at "./a/b/CMakePresets.json"
+- **WHEN** the manager publishes the implicit user-root include
+- **THEN** the Include Graph contains an edge from "./a/b/CMakeUserPresets.json" to "./a/b/CMakePresets.json"
+- **AND** the reverse edge is not implied
+
 ### Requirement: Include Macro Policy
 The Include Graph SHALL validate and expand include strings according to the preset file `version` of the including file node.
 

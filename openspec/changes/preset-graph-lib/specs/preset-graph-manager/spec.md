@@ -46,6 +46,20 @@ If the file specifies `cmakeMinimumRequired`, the Manager SHALL associate it wit
 - **THEN** the file node is marked Unresolved with reason `PresetVersionMissing`
 - **AND** the Manager does not process includes or presets from that file
 
+### Requirement: CMakeUserPresets Root Handling
+When the Manager processes a file named `CMakeUserPresets.json`, it SHALL look for a sibling `CMakePresets.json` in the same directory.
+
+If that sibling file exists, the Manager SHALL publish it as an implicit include of the user preset file before resolving the user file's explicit include entries.
+
+If that sibling file does not exist, the Manager SHALL continue without creating the implicit include.
+
+#### Scenario: Implicitly including sibling project presets
+- **GIVEN** the Manager is processing "./a/b/CMakeUserPresets.json"
+- **AND** a readable file exists at "./a/b/CMakePresets.json"
+- **WHEN** the Manager initializes include processing for the user preset file
+- **THEN** the Include Graph contains an include from "./a/b/CMakeUserPresets.json" to "./a/b/CMakePresets.json"
+- **AND** explicit includes from the user preset file are still processed normally
+
 ### Requirement: Preset Collection Ingestion
 For each successfully loaded preset file that remains eligible for preset processing, the Manager SHALL inspect the root arrays `configurePresets`, `buildPresets`, `testPresets`, `packagePresets`, and `workflowPresets`.
 
@@ -101,6 +115,23 @@ WorkflowPreset instances SHALL remain queryable through `PresetModel` but SHALL 
 - **WHEN** the Manager refreshes the Inheritance Graph from the model
 - **THEN** the Inheritance Graph contains a payload for the `ConfigurePreset`
 - **AND** the Inheritance Graph does not contain a payload for the `WorkflowPreset`
+
+### Requirement: Workflow Preset Validation
+When the Manager refreshes workflow presets in `PresetModel`, it SHALL validate each workflow preset against the typed presets already present in the model.
+
+The first workflow step SHALL reference a Configure preset.
+
+Each subsequent workflow step SHALL reference a Build, Test, or Package preset whose `configurePreset` resolves to the same configure preset selected by the first step.
+
+If workflow validation fails, the Manager SHALL keep the workflow preset in `PresetModel`, SHALL surface a non-fatal workflow validation diagnostic for that workflow preset, and SHALL continue refreshing other presets.
+
+#### Scenario: Reporting a workflow step with a mismatched configure preset
+- **GIVEN** a workflow preset whose first step references Configure preset `cfg`
+- **AND** a later workflow step references Build preset `bld-other`
+- **AND** `bld-other.configurePreset` resolves to `cfg-other`
+- **WHEN** the Manager validates the workflow preset
+- **THEN** the workflow preset remains queryable in `PresetModel`
+- **AND** the Manager records a workflow validation diagnostic for the mismatched step
 
 ### Requirement: Simulated CMake Version
 The Presets Graph Manager SHALL be configured with a simulated CMake version (major/minor/patch) used to validate preset file format constraints.

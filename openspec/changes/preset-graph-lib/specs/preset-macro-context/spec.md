@@ -89,6 +89,8 @@ The string expansion operation SHALL return an ExpansionResult containing:
 ### Requirement: Graceful Partial Expansion
 The system SHALL expand known macros and leave unknown macros unexpanded, rather than treating partial expansion as a hard error.
 
+This behavior is the library contract for v1, even where CMake command-line evaluation would substitute an empty string for a missing environment reference.
+
 #### Scenario: Expanding a string with missing macros
 - **WHEN** a string "build-${presetName}-${unknownMacro}" is expanded with context {"presetName": "default"}
 - **THEN** the ExpansionResult ExpandedString is "build-default-${unknownMacro}"
