@@ -110,20 +110,24 @@ To build an interactive UI, we need a data structure that can parse the raw, une
 - `IncludeFieldUnsupportedInPresetVersion`: A preset file uses `include` but its `version` is less than 4.
 
 ### 9. Preset Model Layer
-**Decision**: Introduce a typed preset model (`PresetModel`) that separates raw JSON from expanded values and provides inheritance/merge semantics used by the graphs.
-**Rationale**: The graphs need consistent access to minimal typed fields (name, inherits, condition, environment) and deterministic inheritance semantics. Centralizing this in a preset model keeps graph logic focused on topology while still supporting macro expansion and raw/expanded views.
-**Alternatives Considered**: Directly parsing raw JSON within the graphs. Rejected because it duplicates parsing/merge logic across graphs and obscures macro-expansion responsibilities.
+**Decision**: Introduce a typed preset model (`PresetModel`) that stores each preset as a long-lived object containing both its raw parsed JSON and its current resolved field state.
+**Rationale**: The graphs need consistent access to minimal typed fields (name, inherits, condition, environment) and deterministic inheritance semantics. Keeping the raw and resolved state on the preset itself preserves the CMake field shape, supports partial resolution across any macro-bearing field, and avoids duplicating state in model-managed snapshot structs.
+**Alternatives Considered**:
+- Directly parsing raw JSON within the graphs. Rejected because it duplicates parsing/merge logic across graphs and obscures macro-expansion responsibilities.
+- Maintaining separate `ResolvedPreset` / `RawResolvedPreset` structs owned by `PresetModel`. Rejected because it duplicates preset state, overfits the current set of resolved fields, and diverges from the field structure defined by the CMake preset format.
 
-**Raw/Expanded View Policy**:
-- The `Preset` struct stores the original/raw field values exactly as parsed from JSON.
-- The `ResolvedPreset` struct stores fully-resolved/expanded values after inheritance merge and macro expansion.
-- Callers querying preset data can access:
-  1. **Raw values**: The original `Preset` via `GetPreset(name)` for UI display of unexpanded text.
-  2. **Resolved values**: The `ResolvedPreset` via `ResolvePreset(name, context)` for computed/effective values.
-- This dual-view design supports UI scenarios where both the user's original input and the computed result must be displayed side-by-side.
+**Raw JSON + In-Preset Resolved State Policy**:
+- Each `Preset` stores the original/raw JSON object exactly as parsed from disk.
+- Each `Preset` stores its current resolved state on the preset instance rather than in a separate model-managed snapshot object.
+- The resolved state maps CMake preset field names to current values plus a per-field expansion status (`Unresolved`, `PartiallyResolved`, `FullyResolved`).
+- Scalar macro-expandable fields are typically represented as strings in the resolved state.
+- Structured fields (e.g. `cacheVariables`) MAY retain their current resolved representation as `nlohmann::json`.
+- Fields not applicable to a given preset type are omitted from that preset's resolved state rather than being synthesized as unrelated top-level properties.
+- Callers querying preset data can access both the raw/original JSON and the preset's current resolved field state for side-by-side UI display.
 
 **Preset Type Hierarchy**:
 - A base `Preset` class defines fields common to most preset types: `name`, `hidden`, `inherits`, `condition`, `displayName`, `description`, `environment`.
+- The base `Preset` class also owns the raw/original JSON and the current resolved state shared by all preset types.
 - Derived classes model type-specific fields:
   - `ConfigurePreset`: Adds `generator`, `binaryDir`, `installDir`, `cacheVariables`, `toolchainFile`, `architecture`, `toolset`.
   - `BuildPreset`: Adds `configurePreset`, `inheritConfigureEnvironment`, `jobs`, `targets`, `configuration`.
@@ -135,6 +139,7 @@ To build an interactive UI, we need a data structure that can parse the raw, une
 
 **Minimal Field Set (v1)**:
 - For this initial implementation, only fields required for graph resolution and macro expansion are modeled as typed members.
+- The preset's raw JSON and in-preset resolved state MAY carry additional CMake-defined fields beyond this minimal typed field set.
 - Type-specific fields beyond the minimal set (e.g., `jobs`, `targets`, `filter`) MAY be deferred to future changes.
 - The minimal typed fields are:
   - Base `Preset`: `name`, `hidden`, `inherits`, `condition`, `environment`

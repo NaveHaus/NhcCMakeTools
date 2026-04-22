@@ -21,7 +21,7 @@ The NhcCMakeTools project requires a robust mechanism for visualizing and intera
 - `preset-file-loader`: Abstraction for loading preset files by path as strings.
 - `preset-include-graph`: Graph model specifically for file `include` relationships.
 - `preset-inheritance-graph`: Graph model specifically for preset `inherits` relationships.
-- `preset-model`: Typed preset model for inheritance, expansion, and raw/expanded views.
+- `preset-model`: Typed preset model that retains raw preset JSON and per-preset resolved field state for inheritance and macro re-evaluation.
 - `preset-graph-manager`: The composite manager that drives graph state resolution.
 
 These capabilities are implemented as modules within the `NhcPresetGraph` library.

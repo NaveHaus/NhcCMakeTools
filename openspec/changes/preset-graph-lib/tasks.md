@@ -166,6 +166,19 @@ Refactor the preset model to use a proper class hierarchy instead of a single st
 - [x] 6b.22 **REFACTOR**: Remove the old `PresetType` enum and flat `Preset` struct after migration is complete.
 - [x] 6b.23 **REFACTOR**: Final review of preset type hierarchy for clarity and correctness.
 
+## 6c. preset-model-resolved-state
+
+Refactor the preset model so each preset owns its raw JSON and current resolved field state.
+
+- [ ] 6c.1 **RED**: Add a failing test verifying that a preset exposes its current resolved state from the preset instance rather than via a separate `ResolvedPreset` object returned by `PresetModel`.
+- [ ] 6c.2 **GREEN**: Remove `ResolvedPreset` and `RawResolvedPreset`, and store raw JSON plus current resolved state on each `Preset`.
+- [ ] 6c.3 **RED**: Add a failing test verifying that a macro-bearing scalar field records `Unresolved`, `PartiallyResolved`, or `FullyResolved` state in the preset's resolved field map.
+- [ ] 6c.4 **GREEN**: Implement per-field resolved-state tracking for scalar fields using CMake preset field names.
+- [ ] 6c.5 **RED**: Add a failing test verifying that structured fields such as `cacheVariables` can be preserved in both raw JSON and current resolved JSON form.
+- [ ] 6c.6 **GREEN**: Implement structured-field storage for raw and resolved JSON.
+- [ ] 6c.7 **REFACTOR**: Derive helper macros such as `${generator}` from the preset's current resolved field state instead of dedicated `EffectiveGenerator` carriers.
+- [ ] 6c.8 **REFACTOR**: Review `PresetModel` APIs for field-oriented resolved-state semantics.
+
 ## 7. preset-graph-manager
 
 - [x] 7.1 **RED**: In a new `tests/PresetsGraph/GraphManagerTests.cpp`, write a failing test verifying that an `ApplyContext` call that discovers a new file results in a new node in the include graph.

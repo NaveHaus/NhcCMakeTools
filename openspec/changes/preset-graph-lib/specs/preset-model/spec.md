@@ -42,17 +42,31 @@ The `PresetModel` SHALL store presets polymorphically and provide type-safe acce
 - **THEN** its typed API does NOT expose `hidden`, `inherits`, `condition`, or `environment`
 - **AND** it exposes `name` and `steps`
 
-### Requirement: Raw And Expanded Views
+### Requirement: Raw JSON And In-Preset Resolved State
 For each preset, the system SHALL retain:
-- The raw/original JSON object as read from disk
-- An expanded view for macro-expandable string fields used by the library
+- The raw/original JSON object as read from disk.
+- A current resolved-state object stored on the preset itself.
 
-The expanded view SHALL preserve the original strings alongside any computed expansions.
+The resolved-state object SHALL:
+- Use CMake preset field names as keys.
+- Store the current resolved value for each tracked field after inheritance merge and macro expansion.
+- Record whether each tracked field is unresolved, partially resolved, or fully resolved.
+- Preserve structured fields using JSON when the field is not naturally a scalar string.
 
-#### Scenario: Preserving raw and expanded values
-- **WHEN** a preset contains an environment value "$env{VCPKG_ROOT}/scripts"
-- **THEN** the raw value is retained
-- **AND** the system can provide an expanded view of the value given a Macro Context
+The system SHALL NOT require a separate model-managed `ResolvedPreset` or `RawResolvedPreset` object to represent resolved state.
+
+#### Scenario: Preserving a partially resolved field on the preset
+- **GIVEN** a ConfigurePreset whose raw JSON `binaryDir` is `"${sourceDir}/build/${unknown}"`
+- **WHEN** the preset refreshes its resolved state with a Macro Context that does not define `unknown`
+- **THEN** the preset retains the original raw JSON value for `binaryDir`
+- **AND** the preset's resolved state stores the current partially expanded `binaryDir` value
+- **AND** the `binaryDir` entry is marked partially resolved
+
+#### Scenario: Preserving a structured field on the preset
+- **GIVEN** a ConfigurePreset whose raw JSON contains object-valued `cacheVariables`
+- **WHEN** the preset refreshes its resolved state
+- **THEN** the preset retains the original raw JSON `cacheVariables`
+- **AND** the preset's resolved state can retain `cacheVariables` as structured JSON
 
 ### Requirement: Preset-Associated Macro Population
 When expanding a macro-expandable field that belongs to a specific preset, the system SHALL populate the Macro Context with preset-associated macro values for that preset.
@@ -194,7 +208,7 @@ Where `WorkflowStep` contains:
 - `type` (enum: Configure, Build, Test, Package)
 - `name` (string, the preset name to execute)
 
-All other fields MAY be retained only in the raw/original JSON for this change.
+All other fields MAY be retained in the raw/original JSON and, when the library evaluates them, in the preset's current resolved state for this change.
 
 #### Scenario: Minimal typed access for graph resolution
 - **WHEN** a preset is added to the system
