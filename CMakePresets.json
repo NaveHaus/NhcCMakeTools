@@ -59,6 +59,28 @@
         "VCPKG_TARGET_TRIPLET": "x64-windows-static",
         "VCPKG_HOST_TRIPLET": "x64-windows-static"
       }
+    },
+    {
+      "name": "clangd-ninja-vcpkg",
+      "inherits": [
+        ".defaults",
+        ".vcpkg-root"
+      ],
+      "generator": "Ninja Multi-Config",
+      "binaryDir": "${sourceDir}/.build/clangd",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "VCPKG_INSTALLED_DIR": "${sourceDir}/.build/.cache-${presetName}",
+        "VCPKG_INSTALL_OPTIONS": "--no-print-usage",
+        "VCPKG_TARGET_TRIPLET": "$env{VCPKG_TARGET_TRIPLET}",
+        "VCPKG_HOST_TRIPLET": "$env{VCPKG_TARGET_TRIPLET}"
+      },
+      "environment": {
+        "CC": "clang",
+        "CXX": "clang++",
+        "VCPKG_TARGET_TRIPLET": "x64-linux",
+        "VCPKG_HOST_TRIPLET": "x64-linux"
+      }
     }
   ],
   "buildPresets": [
