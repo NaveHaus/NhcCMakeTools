@@ -34,6 +34,8 @@ Last updated: 2026-04-29
   - `rg -c "^- \[ \]" openspec/changes/preset-graph-lib/tasks.md`
   - `cmake --workflow --preset=clang-clangd-ninja-vcpkg-mt-s-release-test`
 - CMake workflow verification passed with 9/9 tests passing.
+- 2026-04-29 update-mode verification found no new implementation/artifact
+  mismatches.
 
 ## Key References
 
@@ -69,7 +71,7 @@ Last updated: 2026-04-29
   and records invalid condition diagnostics.
 - Include graph file identity is normalized to absolute paths.
 
-## Findings List
+## Findings List by Priority
 
 ### CRITICAL
 
