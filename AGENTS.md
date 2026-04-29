@@ -163,32 +163,32 @@ To maintain repository integrity, agents MUST follow these rules:
   - `cmake --list-presets=workflow`: List all CMake presets available to execute an end-to-end configure/build/test cycle for specific compilers and operating environments.
 
 - **Configuring a Build**
-  - `cmake --preset=<preset>`: Configure the `<preset>` build. Example to configure a Visual Studio 18 2026 build:
+  - `cmake --preset=<preset>`: Configure the `<preset>` build. Example to configure statically linked Debug and Release builds with clang:
     ```powershell
-    cmake --preset=vs18-vcpkg-mt-s
+    cmake --preset=clang-clangd-ninja-vcpkg-mt-s
     ```
-  - **Result**: Creates the `.build/vs18-vcpkg-mt-s` binary directory with the build configured for Visual Studio 18 2026.
+  - **Result**: Creates the `.build/clang-clangd-ninja-vcpkg-mt-s` binary directory with the configured build.
 
 - **Executing a Build**
-  - `cmake --build --preset=<preset>`: Build the `<preset>` build. The build MUST be configured first. Example to execute a Visual Studio 18 2026 Release build:
+  - `cmake --build --preset=<preset>`: Build the `<preset>` build. The build MUST be configured first. Example to execute a statically-linked clang Release build:
     ```powershell
-    cmake --build --preset=vs18-vcpkg-mt-s-release
+    cmake --build --preset=clang-clangd-ninja-vcpkg-mt-s
     ```
-  - **Result**: Executes a Release build under `.build/vs18-vcpkg-mt-s`, generating all library and executable artifacts.
+  - **Result**: Executes a Release build under `.build/clang-clangd-ninja-vcpkg-mt-s`, generating all library and executable artifacts.
 
 - **Executing All Tests**
-  - `ctest --preset=<preset>`: Test the `<preset>` build. The build MUST be configured AND built first. Example to test a Visual Studio 18 2026 Release build:
+  - `ctest --preset=<preset>`: Test the `<preset>` build. The build MUST be configured AND built first. Example to test statically-linked clang Release build:
     ```powershell
-    ctest --preset=vs18-vcpkg-mt-s-release-test
+    ctest --preset=clang-clangd-ninja-vcpkg-mt-s-release
     ```
-  - **Result**: Executes all tests for a Release build under `.build/vs18-vcpkg-mt-s`.
+  - **Result**: Executes all tests for a Release build under `.build/clang-clangd-ninja-vcpkg-mt-s`.
 
 - **One-Shot Configuring, Executing, and Testing a Build**
-  - `cmake --workflow --preset=<preset>-test`: Configure, execute, and test the `<preset>` build. Example to configure, build, and test a Visual Studio 18 2026 build:
+  - `cmake --workflow --preset=<preset>-test`: Configure, execute, and test the `<preset>` build. Example to configure, build, and test staticall-linked clang Release build:
     ```powershell
-    cmake --workflow --preset=vs18-vcpkg-mt-s-release-test
+    cmake --workflow --preset=clang-clangd-ninja-vcpkg-mt-s-release-test
     ```
-  - **Result**: Executes all tests for a Release build under `.build/vs18-vcpkg-mt-s`.
+  - **Result**: Executes all tests for a Release build under `.build/clang-clangd-ninja-vcpkg-mt-s`.
 
 - **Building and Testing in a TDD Cycle**
   - After modifying a `CMakeLists.txt` file, execute `cmake --preset=<preset>` to reconfigure the `<preset>` build.
@@ -197,15 +197,15 @@ To maintain repository integrity, agents MUST follow these rules:
     - Execute `ctest --preset=<preset> --test-regex <feature>Tests` to execute the modified test.
 
 - **Verification Testing after a TDD Cycle**
-  - After completing a TDD cycle to implement a new feature or modify an existing feature, verify correctness by executing:
+  - After completing a TDD cycle to implement a new feature or modify an existing feature, verify correctness by executing a workflow preset appropriate for the current environment, e.g. Linux with clang on the path:
     ```powershell
-    cmake --workflow --preset=clangd-ninja-vcpkg-release-test
+    cmake --workflow --preset=clang-clangd-ninja-vcpkg-mt-s-release-test
     ```
 
 - **Ensuring a clangd-based C++ LSP Sees Changes**
   - If a C++ LSP seems out-of-date, force CMake to reconfigure the project:
     ```powershell
-    cmake --preset=clangd-ninja-vcpkg-mt-s
+    cmake --preset=clang-clangd-ninja-vcpkg-mt-s
     ```
 
 ## Example OpenSpec Workflows
