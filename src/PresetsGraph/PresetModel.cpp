@@ -58,13 +58,6 @@ ExtractEnvDependencies(const std::string& value)
   return dependencies;
 }
 
-bool
-IsBuildType(PresetKind type)
-{
-  return type == PresetKind::Build || type == PresetKind::Test
-    || type == PresetKind::Package;
-}
-
 const ConfigurePreset*
 AsConfigurePreset(const Preset& preset)
 {
@@ -75,6 +68,21 @@ const ConfigureConsumerPreset*
 AsConfigureConsumerPreset(const Preset& preset)
 {
   return dynamic_cast<const ConfigureConsumerPreset*>(&preset);
+}
+
+ResolvedFieldStatus
+StatusForExpansion(ExpansionStatus status)
+{
+  return status == ExpansionStatus::FullyExpanded
+    ? ResolvedFieldStatus::FullyResolved
+    : ResolvedFieldStatus::PartiallyResolved;
+}
+
+bool
+IsScalarPresetField(const std::string& fieldName)
+{
+  return fieldName == "generator" || fieldName == "installDir"
+    || fieldName == "binaryDir" || fieldName == "toolchainFile";
 }
 
 }  // namespace
@@ -125,6 +133,29 @@ void
 Preset::SetCondition(std::unique_ptr<Condition> condition)
 {
   m_Condition = std::move(condition);
+  m_ConditionState = m_Condition
+    ? PresetConditionState::Expression
+    : PresetConditionState::Absent;
+}
+
+PresetConditionState
+Preset::GetConditionState() const
+{
+  return m_ConditionState;
+}
+
+void
+Preset::SetConditionExplicitNull()
+{
+  m_Condition.reset();
+  m_ConditionState = PresetConditionState::ExplicitNull;
+}
+
+void
+Preset::ClearCondition()
+{
+  m_Condition.reset();
+  m_ConditionState = PresetConditionState::Absent;
 }
 
 const PresetEnvironment&
@@ -137,6 +168,62 @@ void
 Preset::SetEnvironment(PresetEnvironment environment)
 {
   m_Environment = std::move(environment);
+}
+
+const nlohmann::json&
+Preset::GetRawJson() const
+{
+  return m_RawJson;
+}
+
+void
+Preset::SetRawJson(nlohmann::json rawJson)
+{
+  m_RawJson = std::move(rawJson);
+}
+
+const std::unordered_map<std::string, ResolvedField>&
+Preset::GetResolvedFields() const
+{
+  return m_ResolvedFields;
+}
+
+void
+Preset::ClearResolvedFields()
+{
+  m_ResolvedFields.clear();
+}
+
+void
+Preset::SetResolvedField(std::string fieldName, ResolvedField field)
+{
+  m_ResolvedFields[std::move(fieldName)] = std::move(field);
+}
+
+bool
+Preset::GetIsUnresolved() const
+{
+  return m_IsUnresolved;
+}
+
+const std::optional<UnresolvedReason>&
+Preset::GetReason() const
+{
+  return m_Reason;
+}
+
+void
+Preset::MarkUnresolved(UnresolvedReason reason)
+{
+  m_IsUnresolved = true;
+  m_Reason = reason;
+}
+
+void
+Preset::ClearUnresolved()
+{
+  m_IsUnresolved = false;
+  m_Reason.reset();
 }
 
 PresetKind
@@ -237,6 +324,12 @@ PresetModel::AddPreset(std::unique_ptr<Preset> preset)
   m_Presets[preset->GetName()] = std::move(preset);
 }
 
+void
+PresetModel::RemovePreset(const std::string& name)
+{
+  m_Presets.erase(name);
+}
+
 const Preset&
 PresetModel::GetPreset(const std::string& name) const
 {
@@ -249,11 +342,78 @@ PresetModel::GetPresetKind(const std::string& name) const
   return m_Presets.at(name)->GetType();
 }
 
-ResolvedPreset
-PresetModel::ResolvePreset(const std::string& name,
-  const MacroContext& context) const
+std::vector<const Preset*>
+PresetModel::GetPresets() const
 {
-  const auto raw = ResolveRawPreset(name);
+  std::vector<const Preset*> presets;
+  presets.reserve(m_Presets.size());
+  for(const auto& [_, preset] : m_Presets) {
+    presets.push_back(preset.get());
+  }
+  return presets;
+}
+
+const Condition*
+PresetModel::ResolveCondition(const std::string& name) const
+{
+  const auto& preset = *m_Presets.at(name);
+  if(preset.GetConditionState() == PresetConditionState::Expression) {
+    return preset.GetCondition();
+  }
+  if(preset.GetConditionState() == PresetConditionState::ExplicitNull) {
+    return nullptr;
+  }
+
+  const Condition* inherited = nullptr;
+  for(auto it = preset.GetInherits().rbegin();
+    it != preset.GetInherits().rend(); ++it)
+  {
+    if(m_Presets.contains(*it)) {
+      if(const auto* parentCondition = ResolveCondition(*it);
+        parentCondition != nullptr)
+      {
+        inherited = parentCondition;
+      }
+    }
+  }
+
+  return inherited;
+}
+
+void
+PresetModel::RefreshResolvedState(const std::string& name,
+  const MacroContext& context)
+{
+  const auto merged = ResolveMergedFields(name);
+  auto& preset = *m_Presets.at(name);
+  preset.ClearResolvedFields();
+
+  auto localContext = context;
+  localContext.SetMacro("presetName", merged.Name);
+  if(merged.EffectiveGenerator.has_value()) {
+    localContext.SetMacro("generator", *merged.EffectiveGenerator);
+  }
+
+  for(const auto& [fieldName, fieldValue] : merged.RawFields) {
+    if(fieldValue.is_string() && IsScalarPresetField(fieldName)) {
+      const auto expanded =
+        localContext.ExpandString(fieldValue.get<std::string>());
+      preset.SetResolvedField(fieldName,
+        ResolvedField{.Value = expanded.ExpandedString,
+          .Status = StatusForExpansion(expanded.Status)});
+      continue;
+    }
+
+    preset.SetResolvedField(fieldName,
+      ResolvedField{
+        .Value = fieldValue, .Status = ResolvedFieldStatus::FullyResolved});
+  }
+}
+
+ResolvedPreset
+PresetModel::ResolvePreset(const std::string& name, const MacroContext& context)
+{
+  const auto raw = ResolveMergedFields(name);
   auto result = ResolvedPreset{};
   result.Type = raw.Type;
   result.Name = raw.Name;
@@ -318,19 +478,23 @@ PresetModel::ResolvePreset(const std::string& name,
   return result;
 }
 
-PresetModel::RawResolvedPreset
-PresetModel::ResolveRawPreset(const std::string& name) const
+PresetModel::MergedPresetFields
+PresetModel::ResolveMergedFields(const std::string& name) const
 {
   const auto& preset = *m_Presets.at(name);
 
-  auto resolved = RawResolvedPreset{};
+  auto resolved = MergedPresetFields{};
   resolved.Type = preset.GetType();
   resolved.Name = preset.GetName();
 
   for(auto it = preset.GetInherits().rbegin();
     it != preset.GetInherits().rend(); ++it)
   {
-    const auto parent = ResolveRawPreset(*it);
+    if(!m_Presets.contains(*it)) {
+      continue;
+    }
+
+    const auto parent = ResolveMergedFields(*it);
     if(parent.InstallDir.has_value()) {
       resolved.InstallDir = parent.InstallDir;
     }
@@ -338,17 +502,29 @@ PresetModel::ResolveRawPreset(const std::string& name) const
       resolved.EffectiveGenerator = parent.EffectiveGenerator;
     }
     ApplyEnvironmentEntries(resolved.RawEnvironment, parent.RawEnvironment);
+    for(const auto& [fieldName, fieldValue] : parent.RawFields) {
+      resolved.RawFields[fieldName] = fieldValue;
+    }
   }
 
   if(const auto* buildPreset = AsConfigureConsumerPreset(preset);
     buildPreset != nullptr && buildPreset->GetInheritConfigureEnvironment()
     && buildPreset->GetConfigurePreset().has_value())
   {
-    const auto configure = ResolveRawPreset(*buildPreset->GetConfigurePreset());
-    ApplyEnvironmentEntries(resolved.RawEnvironment, configure.RawEnvironment);
+    if(m_Presets.contains(*buildPreset->GetConfigurePreset())) {
+      const auto configure =
+        ResolveMergedFields(*buildPreset->GetConfigurePreset());
+      ApplyEnvironmentEntries(resolved.RawEnvironment,
+        configure.RawEnvironment);
+    }
   }
 
   ApplyEnvironmentEntries(resolved.RawEnvironment, preset.GetEnvironment());
+  if(preset.GetRawJson().is_object()) {
+    for(const auto& [fieldName, fieldValue] : preset.GetRawJson().items()) {
+      resolved.RawFields[fieldName] = fieldValue;
+    }
+  }
 
   if(const auto* configurePreset = AsConfigurePreset(preset);
     configurePreset != nullptr)
@@ -364,8 +540,11 @@ PresetModel::ResolveRawPreset(const std::string& name) const
   if(const auto* buildPreset = AsConfigureConsumerPreset(preset);
     buildPreset != nullptr && buildPreset->GetConfigurePreset().has_value())
   {
-    const auto configure = ResolveRawPreset(*buildPreset->GetConfigurePreset());
-    resolved.EffectiveGenerator = configure.EffectiveGenerator;
+    if(m_Presets.contains(*buildPreset->GetConfigurePreset())) {
+      const auto configure =
+        ResolveMergedFields(*buildPreset->GetConfigurePreset());
+      resolved.EffectiveGenerator = configure.EffectiveGenerator;
+    }
   }
 
   return resolved;

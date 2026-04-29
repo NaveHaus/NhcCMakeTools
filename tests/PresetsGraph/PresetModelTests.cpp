@@ -4,6 +4,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <memory>
+#include <nlohmann/json.hpp>
 #include <type_traits>
 
 #include "PresetModel.h"
@@ -16,8 +17,10 @@ using nhc::preset_graph::EqualsCondition;
 using nhc::preset_graph::MacroContext;
 using nhc::preset_graph::PackagePreset;
 using nhc::preset_graph::Preset;
+using nhc::preset_graph::PresetConditionState;
 using nhc::preset_graph::PresetKind;
 using nhc::preset_graph::PresetModel;
+using nhc::preset_graph::ResolvedFieldStatus;
 using nhc::preset_graph::TestPreset;
 using nhc::preset_graph::UnresolvedReason;
 using nhc::preset_graph::WorkflowPreset;
@@ -428,6 +431,133 @@ SCENARIO("Raw preset is accessible after adding")
           == std::optional<std::string>{"Ninja"});
         REQUIRE(raw.GetEnvironment().at("PATH")
           == std::optional<std::string>{"${sourceDir}/bin"});
+      }
+    }
+  }
+}
+
+SCENARIO(
+  "Explicit null condition clears inherited condition for current preset")
+{
+  GIVEN("A child preset with condition null inheriting a false condition")
+  {
+    PresetModel model;
+
+    auto parent = MakeNamedPreset<ConfigurePreset>("P0");
+    parent->SetCondition(
+      std::make_unique<nhc::preset_graph::ConstCondition>(false));
+    model.AddPreset(std::move(parent));
+
+    auto child = MakeNamedPreset<ConfigurePreset>("C");
+    child->SetInherits({"P0"});
+    child->SetConditionExplicitNull();
+    model.AddPreset(std::move(child));
+
+    WHEN("The child's effective condition is resolved")
+    {
+      const auto* condition = model.ResolveCondition("C");
+
+      THEN("No inherited evaluable condition remains")
+      {
+        REQUIRE(condition == nullptr);
+      }
+    }
+  }
+}
+
+SCENARIO("Explicit null condition is not inherited by descendants")
+{
+  GIVEN("A grandchild inheriting through a parent with condition null")
+  {
+    PresetModel model;
+
+    auto parent = MakeNamedPreset<ConfigurePreset>("P0");
+    parent->SetCondition(
+      std::make_unique<nhc::preset_graph::ConstCondition>(false));
+    model.AddPreset(std::move(parent));
+
+    auto child = MakeNamedPreset<ConfigurePreset>("C");
+    child->SetInherits({"P0"});
+    child->SetConditionExplicitNull();
+    model.AddPreset(std::move(child));
+
+    auto grandchild = MakeNamedPreset<ConfigurePreset>("G");
+    grandchild->SetInherits({"C"});
+    model.AddPreset(std::move(grandchild));
+
+    WHEN("The grandchild's effective condition is resolved")
+    {
+      const auto* condition = model.ResolveCondition("G");
+
+      THEN("It does not inherit an explicit null marker")
+      {
+        REQUIRE(condition == nullptr);
+        REQUIRE(model.GetPreset("C").GetConditionState()
+          == PresetConditionState::ExplicitNull);
+      }
+    }
+  }
+}
+
+SCENARIO("Preset owns raw JSON and current resolved scalar state")
+{
+  GIVEN("A configure preset with a macro-bearing raw binaryDir")
+  {
+    PresetModel model;
+
+    auto preset = MakeNamedPreset<ConfigurePreset>("cfg");
+    preset->SetRawJson(nlohmann::json{
+      {"name", "cfg"},
+      {"binaryDir", "${sourceDir}/build/${unknown}"},
+    });
+    model.AddPreset(std::move(preset));
+
+    WHEN("The preset resolved state is refreshed")
+    {
+      auto context = MacroContext{};
+      context.SetMacro("sourceDir", "/src");
+      model.RefreshResolvedState("cfg", context);
+
+      THEN("The preset retains raw JSON and partially resolved field state")
+      {
+        const auto& raw = model.GetPreset("cfg").GetRawJson();
+        const auto& resolved = model.GetPreset("cfg").GetResolvedFields();
+
+        REQUIRE(raw.at("binaryDir") == "${sourceDir}/build/${unknown}");
+        REQUIRE(resolved.at("binaryDir").Value == "/src/build/${unknown}");
+        REQUIRE(resolved.at("binaryDir").Status
+          == ResolvedFieldStatus::PartiallyResolved);
+      }
+    }
+  }
+}
+
+SCENARIO("Preset resolved state preserves structured JSON fields")
+{
+  GIVEN("A configure preset with structured cacheVariables")
+  {
+    PresetModel model;
+
+    auto preset = MakeNamedPreset<ConfigurePreset>("cfg");
+    preset->SetRawJson(nlohmann::json{
+      {"name", "cfg"},
+      {"cacheVariables", nlohmann::json{{"FEATURE", true}}},
+    });
+    model.AddPreset(std::move(preset));
+
+    WHEN("The preset resolved state is refreshed")
+    {
+      model.RefreshResolvedState("cfg", MacroContext{});
+
+      THEN("The structured field is retained as JSON")
+      {
+        const auto& resolved = model.GetPreset("cfg").GetResolvedFields();
+        REQUIRE(model.GetPreset("cfg").GetRawJson().at("cacheVariables")
+          == nlohmann::json{{"FEATURE", true}});
+        REQUIRE(resolved.at("cacheVariables").Value
+          == nlohmann::json{{"FEATURE", true}});
+        REQUIRE(resolved.at("cacheVariables").Status
+          == ResolvedFieldStatus::FullyResolved);
       }
     }
   }

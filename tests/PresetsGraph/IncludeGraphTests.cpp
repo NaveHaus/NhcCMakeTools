@@ -3,6 +3,8 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <filesystem>
+
 #include "IncludeGraph.h"
 
 namespace {
@@ -12,6 +14,12 @@ using nhc::preset_graph::IncludeGraphState;
 using nhc::preset_graph::MacroContext;
 using nhc::preset_graph::PresetIncludeGraph;
 using nhc::preset_graph::UnresolvedReason;
+
+std::string
+Abs(const std::string& path)
+{
+  return std::filesystem::absolute(path).lexically_normal().generic_string();
+}
 
 }  // namespace
 
@@ -32,7 +40,7 @@ SCENARIO("PresetIncludeGraph stores added file payloads")
       THEN("The payload can be retrieved by node id")
       {
         const auto& payload = graph.GetFilePayload(nodeId);
-        REQUIRE(payload.FilePath == "CMakePresets.json");
+        REQUIRE(payload.FilePath == Abs("CMakePresets.json"));
         REQUIRE(payload.PresetFileVersion == 10U);
         REQUIRE(payload.PendingIncludes
           == std::vector<std::string>{"d/e/linux-presets.json"});

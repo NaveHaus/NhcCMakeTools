@@ -27,6 +27,7 @@ enum class UnresolvedReason
   MissingMacro,
   UnsupportedMacro,
   EnvironmentCycle,
+  InvalidCondition,
   IncludeCycle,
   InheritanceCycle,
   CMakeMinimumRequiredNotMet,

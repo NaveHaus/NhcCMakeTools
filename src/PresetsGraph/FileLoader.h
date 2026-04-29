@@ -25,4 +25,11 @@ class FileLoader
   virtual FileLoadResult LoadFile(const std::string& path) const = 0;
 };
 
+/// File loader that reads preset files from the local filesystem.
+class FilesystemFileLoader final : public FileLoader
+{
+  public:
+  FileLoadResult LoadFile(const std::string& path) const override;
+};
+
 }  // namespace nhc::preset_graph

@@ -4,6 +4,8 @@ nhc_add_library(NhcPresetGraph STATIC
   SOURCES
     Condition.cpp
     Condition.h
+    FileLoader.cpp
+    FileLoader.h
     Graph.h
     InheritanceGraph.cpp
     InheritanceGraph.h

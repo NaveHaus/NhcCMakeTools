@@ -18,6 +18,12 @@ nhc_add_test_executable(ConditionTests
   FOLDER "Tests"
 )
 
+nhc_add_test_executable(FileLoaderTests
+  SOURCES FileLoaderTests.cpp
+  USES NhcPresetGraph NhcTestLib
+  FOLDER "Tests"
+)
+
 nhc_add_test_executable(IncludeGraphTests
   SOURCES IncludeGraphTests.cpp
   USES NhcPresetGraph NhcTestLib

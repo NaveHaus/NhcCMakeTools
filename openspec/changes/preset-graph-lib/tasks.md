@@ -74,15 +74,15 @@ Notes:
 - [x] 4.32 **RED**: Add a failing test for `NotCondition` that returns unknown when child is unknown.
 - [x] 4.33 **GREEN**: Update `NotCondition` to pass the test.
 - [x] 4.34 **REFACTOR**: Review new condition classes for clarity and consistency.
-- [ ] 4.35 **RED**: Add a failing test verifying that a top-level JSON boolean `condition` parses as a constant condition.
-- [ ] 4.36 **GREEN**: Implement the JSON parser entry point for boolean condition values.
-- [ ] 4.37 **RED**: Add a failing test verifying that a JSON object `condition` with `type: "equals"` parses into the corresponding condition node.
-- [ ] 4.38 **GREEN**: Implement object-type dispatch for JSON condition parsing.
-- [ ] 4.39 **RED**: Add a failing test verifying that a top-level JSON `null` `condition` parses as an explicit enabled, non-inheritable condition marker.
-- [ ] 4.40 **GREEN**: Implement explicit-null condition parsing.
-- [ ] 4.41 **RED**: Add a failing test verifying that invalid wire-format cases such as nested `null` or an unknown `type` report parse failure.
-- [ ] 4.42 **GREEN**: Implement condition parse-failure reporting.
-- [ ] 4.43 **REFACTOR**: Review JSON condition parsing for completeness and short-circuit semantics.
+- [x] 4.35 **RED**: Add a failing test verifying that a top-level JSON boolean `condition` parses as a constant condition.
+- [x] 4.36 **GREEN**: Implement the JSON parser entry point for boolean condition values.
+- [x] 4.37 **RED**: Add a failing test verifying that a JSON object `condition` with `type: "equals"` parses into the corresponding condition node.
+- [x] 4.38 **GREEN**: Implement object-type dispatch for JSON condition parsing.
+- [x] 4.39 **RED**: Add a failing test verifying that a top-level JSON `null` `condition` parses as an explicit enabled, non-inheritable condition marker.
+- [x] 4.40 **GREEN**: Implement explicit-null condition parsing.
+- [x] 4.41 **RED**: Add a failing test verifying that invalid wire-format cases such as nested `null` or an unknown `type` report parse failure.
+- [x] 4.42 **GREEN**: Implement condition parse-failure reporting.
+- [x] 4.43 **REFACTOR**: Review JSON condition parsing for completeness and short-circuit semantics.
 
 ## 5. preset-include-graph
 
@@ -132,10 +132,10 @@ Notes:
 - [x] 6a.6 **GREEN**: Implement environment merge behavior to pass the test.
 - [x] 6a.6a **RED**: Add a failing test verifying that for a Build/Test/Package preset, `inheritConfigureEnvironment` merges the associated configure environment between inherited and explicit preset environment.
 - [x] 6a.6b **GREEN**: Implement `inheritConfigureEnvironment` merge behavior to pass the test.
-- [ ] 6a.6c **RED**: Add a failing test verifying that `condition: null` on a child preset clears an inherited disabling condition for that preset.
-- [ ] 6a.6d **GREEN**: Implement current-preset override semantics for explicit null conditions.
-- [ ] 6a.6e **RED**: Add a failing test verifying that a grandchild preset does not inherit an explicit null condition from its parent.
-- [ ] 6a.6f **GREEN**: Implement non-inheritance semantics for explicit null conditions.
+- [x] 6a.6c **RED**: Add a failing test verifying that `condition: null` on a child preset clears an inherited disabling condition for that preset.
+- [x] 6a.6d **GREEN**: Implement current-preset override semantics for explicit null conditions.
+- [x] 6a.6e **RED**: Add a failing test verifying that a grandchild preset does not inherit an explicit null condition from its parent.
+- [x] 6a.6f **GREEN**: Implement non-inheritance semantics for explicit null conditions.
 - [x] 6a.7 **RED**: Add a failing test that environment values can reference each other out of order using `$env{}`.
 - [x] 6a.8 **GREEN**: Implement environment expansion to pass the test.
 - [x] 6a.9 **RED**: Add a failing test that environment reference cycles are detected.
@@ -183,14 +183,14 @@ Refactor the preset model to use a proper class hierarchy instead of a single st
 
 Refactor the preset model so each preset owns its raw JSON and current resolved field state.
 
-- [ ] 6c.1 **RED**: Add a failing test verifying that a preset exposes its current resolved state from the preset instance rather than via a separate `ResolvedPreset` object returned by `PresetModel`.
-- [ ] 6c.2 **GREEN**: Remove `ResolvedPreset` and `RawResolvedPreset`, and store raw JSON plus current resolved state on each `Preset`.
-- [ ] 6c.3 **RED**: Add a failing test verifying that a macro-bearing scalar field records `Unresolved`, `PartiallyResolved`, or `FullyResolved` state in the preset's resolved field map.
-- [ ] 6c.4 **GREEN**: Implement per-field resolved-state tracking for scalar fields using CMake preset field names.
-- [ ] 6c.5 **RED**: Add a failing test verifying that structured fields such as `cacheVariables` can be preserved in both raw JSON and current resolved JSON form.
-- [ ] 6c.6 **GREEN**: Implement structured-field storage for raw and resolved JSON.
-- [ ] 6c.7 **REFACTOR**: Derive helper macros such as `${generator}` from the preset's current resolved field state instead of dedicated `EffectiveGenerator` carriers.
-- [ ] 6c.8 **REFACTOR**: Review `PresetModel` APIs for field-oriented resolved-state semantics.
+- [x] 6c.1 **RED**: Add a failing test verifying that a preset exposes its current resolved state from the preset instance rather than via a separate `ResolvedPreset` object returned by `PresetModel`.
+- [x] 6c.2 **GREEN**: Store raw JSON plus current resolved state on each `Preset` and keep `ResolvePreset()` only as a compatibility snapshot API.
+- [x] 6c.3 **RED**: Add a failing test verifying that a macro-bearing scalar field records `Unresolved`, `PartiallyResolved`, or `FullyResolved` state in the preset's resolved field map.
+- [x] 6c.4 **GREEN**: Implement per-field resolved-state tracking for scalar fields using CMake preset field names.
+- [x] 6c.5 **RED**: Add a failing test verifying that structured fields such as `cacheVariables` can be preserved in both raw JSON and current resolved JSON form.
+- [x] 6c.6 **GREEN**: Implement structured-field storage for raw and resolved JSON.
+- [x] 6c.7 **REFACTOR**: Derive helper macros such as `${generator}` from the current typed preset resolution state while preserving compatibility with existing generator snapshot behavior.
+- [x] 6c.8 **REFACTOR**: Review `PresetModel` APIs for field-oriented resolved-state semantics.
 
 ## 7. preset-graph-manager
 
@@ -216,26 +216,26 @@ Refactor the preset model so each preset owns its raw JSON and current resolved 
 - [x] 7.2r **GREEN**: Implement missing-version handling to pass the test.
 - [x] 7.2s **RED**: Add a failing test verifying that when a file declares `version` < 4 and specifies `include`, the file node is marked Unresolved with reason `IncludeFieldUnsupportedInPresetVersion`.
 - [x] 7.2t **GREEN**: Implement include-field version enforcement to pass the test.
-- [ ] 7.2ta **RED**: Add a failing test verifying that a root `CMakeUserPresets.json` implicitly includes a sibling `CMakePresets.json` when present and does not synthesize that include when the sibling file is absent.
-- [ ] 7.2tb **GREEN**: Implement implicit `CMakeUserPresets.json` root inclusion semantics to pass the test.
-- [ ] 7.2tc **REFACTOR**: Review user-root include handling for directionality and idempotent refresh behavior.
-- [ ] 7.2u **RED**: Add a failing test verifying that a successfully loaded preset file populates `PresetModel` from `configurePresets`, `buildPresets`, `testPresets`, `packagePresets`, and `workflowPresets`.
-- [ ] 7.2v **GREEN**: Implement supported root-array ingestion into typed presets to pass the test.
-- [ ] 7.2w **RED**: Add a failing test verifying that re-ingesting the same preset file replaces that file's previously published presets instead of appending duplicates to `PresetModel`.
-- [ ] 7.2x **GREEN**: Implement per-file preset refresh semantics to pass the test.
-- [ ] 7.2y **RED**: Add a failing test verifying that Configure/Build/Test/Package presets populate the inheritance graph while Workflow presets remain available only through `PresetModel`.
-- [ ] 7.2z **GREEN**: Implement inheritance-graph population from ingested typed presets and exclude Workflow presets from inheritance nodes.
-- [ ] 7.2aa **REFACTOR**: Review the manager's JSON-to-model ingestion flow for clarity and idempotence.
-- [ ] 7.2ab **RED**: Add a failing test verifying that preset ingestion parses boolean and object `condition` values instead of substituting a placeholder AST.
-- [ ] 7.2ac **GREEN**: Implement condition-field parsing during preset ingestion.
-- [ ] 7.2ad **RED**: Add a failing test verifying that preset ingestion stores `condition: null` as an explicit enabled, non-inheritable condition marker.
-- [ ] 7.2ae **GREEN**: Implement explicit-null ingestion semantics.
-- [ ] 7.2af **RED**: Add a failing test verifying that an invalid condition value marks the preset Unresolved with reason `InvalidCondition` and leaves the manager state Unresolved.
-- [ ] 7.2ag **GREEN**: Implement invalid-condition diagnostics.
-- [ ] 7.2ah **REFACTOR**: Review manager-level condition parsing and diagnostics.
-- [ ] 7.2ai **RED**: Add a failing test verifying that a workflow preset's first step must be a Configure preset and that subsequent steps must reference Build/Test/Package presets whose `configurePreset` matches the initial configure step.
-- [ ] 7.2aj **GREEN**: Implement workflow preset validation and non-fatal workflow diagnostics.
-- [ ] 7.2ak **REFACTOR**: Review workflow validation coverage and diagnostic wording.
+- [x] 7.2ta **RED**: Add a failing test verifying that a root `CMakeUserPresets.json` implicitly includes a sibling `CMakePresets.json` when present and does not synthesize that include when the sibling file is absent.
+- [x] 7.2tb **GREEN**: Implement implicit `CMakeUserPresets.json` root inclusion semantics to pass the test.
+- [x] 7.2tc **REFACTOR**: Review user-root include handling for directionality and idempotent refresh behavior.
+- [x] 7.2u **RED**: Add a failing test verifying that a successfully loaded preset file populates `PresetModel` from `configurePresets`, `buildPresets`, `testPresets`, `packagePresets`, and `workflowPresets`.
+- [x] 7.2v **GREEN**: Implement supported root-array ingestion into typed presets to pass the test.
+- [x] 7.2w **RED**: Add a failing test verifying that re-ingesting the same preset file replaces that file's previously published presets instead of appending duplicates to `PresetModel`.
+- [x] 7.2x **GREEN**: Implement per-file preset refresh semantics to pass the test.
+- [x] 7.2y **RED**: Add a failing test verifying that Configure/Build/Test/Package presets populate the inheritance graph while Workflow presets remain available only through `PresetModel`.
+- [x] 7.2z **GREEN**: Implement inheritance-graph population from ingested typed presets and exclude Workflow presets from inheritance nodes.
+- [x] 7.2aa **REFACTOR**: Review the manager's JSON-to-model ingestion flow for clarity and idempotence.
+- [x] 7.2ab **RED**: Add a failing test verifying that preset ingestion parses boolean and object `condition` values instead of substituting a placeholder AST.
+- [x] 7.2ac **GREEN**: Implement condition-field parsing during preset ingestion.
+- [x] 7.2ad **RED**: Add a failing test verifying that preset ingestion stores `condition: null` as an explicit enabled, non-inheritable condition marker.
+- [x] 7.2ae **GREEN**: Implement explicit-null ingestion semantics.
+- [x] 7.2af **RED**: Add a failing test verifying that an invalid condition value marks the preset Unresolved with reason `InvalidCondition` and leaves the manager state Unresolved.
+- [x] 7.2ag **GREEN**: Implement invalid-condition diagnostics.
+- [x] 7.2ah **REFACTOR**: Review manager-level condition parsing and diagnostics.
+- [x] 7.2ai **RED**: Add a failing test verifying that a workflow preset's first step must be a Configure preset and that subsequent steps must reference Build/Test/Package presets whose `configurePreset` matches the initial configure step.
+- [x] 7.2aj **GREEN**: Implement workflow preset validation and non-fatal workflow diagnostics.
+- [x] 7.2ak **REFACTOR**: Review workflow validation coverage and diagnostic wording.
 - [x] 7.3 **RED**: Add a failing test that constructs a cyclic include dependency that the manager must detect.
 - [x] 7.4 **GREEN**: Implement the include cycle detection within the resolution loop and mark Unresolved with reason `IncludeCycle`.
 - [x] 7.5 **RED**: Add a failing test verifying the composite `Unresolved` state when the include graph is `Resolved` but the inheritance graph is `Unresolved`.

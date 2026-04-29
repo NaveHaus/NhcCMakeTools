@@ -231,7 +231,9 @@ PresetIncludeGraph::ComputeState() const
 std::string
 PresetIncludeGraph::NormalizePath(const std::string& path)
 {
-  return std::filesystem::path(path).lexically_normal().generic_string();
+  return std::filesystem::absolute(std::filesystem::path(path))
+    .lexically_normal()
+    .generic_string();
 }
 
 }  // namespace nhc::preset_graph

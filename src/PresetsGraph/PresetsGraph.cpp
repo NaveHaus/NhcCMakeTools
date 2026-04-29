@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <memory>
 #include <optional>
+#include <string_view>
 #include <nlohmann/json.hpp>
 
 #include "Condition.h"
@@ -44,6 +45,194 @@ TryReadVersion(const nlohmann::json& value)
   };
 }
 
+std::vector<std::string>
+ReadStringOrStringArray(const nlohmann::json& value)
+{
+  if(value.is_string()) {
+    return {value.get<std::string>()};
+  }
+
+  std::vector<std::string> result;
+  if(!value.is_array()) {
+    return result;
+  }
+
+  for(const auto& entry : value) {
+    if(entry.is_string()) {
+      result.push_back(entry.get<std::string>());
+    }
+  }
+  return result;
+}
+
+PresetEnvironment
+ReadEnvironment(const nlohmann::json& value)
+{
+  PresetEnvironment environment;
+  if(!value.is_object()) {
+    return environment;
+  }
+
+  for(const auto& [name, entry] : value.items()) {
+    if(entry.is_string()) {
+      environment[name] = entry.get<std::string>();
+    } else if(entry.is_null()) {
+      environment[name] = std::nullopt;
+    }
+  }
+  return environment;
+}
+
+std::optional<WorkflowStepType>
+TryReadWorkflowStepType(const nlohmann::json& value)
+{
+  if(!value.is_string()) {
+    return std::nullopt;
+  }
+
+  const auto type = value.get<std::string>();
+  if(type == "configure") {
+    return WorkflowStepType::Configure;
+  }
+  if(type == "build") {
+    return WorkflowStepType::Build;
+  }
+  if(type == "test") {
+    return WorkflowStepType::Test;
+  }
+  if(type == "package") {
+    return WorkflowStepType::Package;
+  }
+
+  return std::nullopt;
+}
+
+void
+ApplyCommonPresetFields(Preset& preset, const nlohmann::json& presetJson)
+{
+  preset.SetName(presetJson["name"].get<std::string>());
+  preset.SetRawJson(presetJson);
+  preset.SetHidden(presetJson.value("hidden", false));
+
+  if(presetJson.contains("inherits")) {
+    preset.SetInherits(ReadStringOrStringArray(presetJson["inherits"]));
+  }
+
+  if(presetJson.contains("environment")) {
+    preset.SetEnvironment(ReadEnvironment(presetJson["environment"]));
+  }
+
+  if(presetJson.contains("condition")) {
+    auto condition = ParseConditionJson(presetJson["condition"]);
+    if(condition.Status == ConditionParseStatus::Parsed) {
+      preset.SetCondition(std::move(condition.ConditionAst));
+    } else if(condition.Status == ConditionParseStatus::ExplicitNull) {
+      preset.SetConditionExplicitNull();
+    } else {
+      preset.MarkUnresolved(UnresolvedReason::InvalidCondition);
+    }
+  }
+}
+
+std::unique_ptr<Preset>
+CreatePresetFromJson(PresetKind kind, const nlohmann::json& presetJson)
+{
+  if(!presetJson.is_object() || !presetJson.contains("name")
+    || !presetJson["name"].is_string())
+  {
+    return nullptr;
+  }
+
+  if(kind == PresetKind::Configure) {
+    auto preset = std::make_unique<ConfigurePreset>();
+    ApplyCommonPresetFields(*preset, presetJson);
+    if(presetJson.contains("installDir")
+      && presetJson["installDir"].is_string())
+    {
+      preset->SetInstallDir(presetJson["installDir"].get<std::string>());
+    }
+    if(presetJson.contains("generator") && presetJson["generator"].is_string())
+    {
+      preset->SetGenerator(presetJson["generator"].get<std::string>());
+    }
+    return preset;
+  }
+
+  if(kind == PresetKind::Build || kind == PresetKind::Test
+    || kind == PresetKind::Package)
+  {
+    std::unique_ptr<ConfigureConsumerPreset> preset;
+    if(kind == PresetKind::Build) {
+      preset = std::make_unique<BuildPreset>();
+    } else if(kind == PresetKind::Test) {
+      preset = std::make_unique<TestPreset>();
+    } else {
+      preset = std::make_unique<PackagePreset>();
+    }
+
+    ApplyCommonPresetFields(*preset, presetJson);
+    if(presetJson.contains("configurePreset")
+      && presetJson["configurePreset"].is_string())
+    {
+      preset->SetConfigurePreset(
+        presetJson["configurePreset"].get<std::string>());
+    }
+    preset->SetInheritConfigureEnvironment(
+      presetJson.value("inheritConfigureEnvironment", true));
+    return preset;
+  }
+
+  auto preset = std::make_unique<WorkflowPreset>();
+  preset->SetName(presetJson["name"].get<std::string>());
+  preset->SetRawJson(presetJson);
+
+  std::vector<WorkflowStep> steps;
+  if(presetJson.contains("steps") && presetJson["steps"].is_array()) {
+    for(const auto& stepJson : presetJson["steps"]) {
+      if(!stepJson.is_object() || !stepJson.contains("type")
+        || !stepJson.contains("name") || !stepJson["name"].is_string())
+      {
+        continue;
+      }
+
+      const auto type = TryReadWorkflowStepType(stepJson["type"]);
+      if(type.has_value()) {
+        steps.push_back(WorkflowStep{
+          .Type = *type,
+          .Name = stepJson["name"].get<std::string>(),
+        });
+      }
+    }
+  }
+  preset->SetSteps(std::move(steps));
+  return preset;
+}
+
+void
+IngestPresetArray(PresetModel& model, std::vector<std::string>& names,
+  const nlohmann::json& root, std::string_view arrayName, PresetKind kind)
+{
+  const auto key = std::string{arrayName};
+  if(!root.contains(key) || !root[key].is_array()) {
+    return;
+  }
+
+  for(const auto& presetJson : root[key]) {
+    auto preset = CreatePresetFromJson(kind, presetJson);
+    if(preset == nullptr) {
+      continue;
+    }
+    names.push_back(preset->GetName());
+    model.AddPreset(std::move(preset));
+  }
+}
+
+bool
+HasVendorMacro(const nlohmann::json& value)
+{
+  return value.dump().find("$vendor{") != std::string::npos;
+}
+
 }  // namespace
 
 PresetsGraph::PresetsGraph(const FileLoader& fileLoader,
@@ -63,6 +252,12 @@ PresetsGraph::AddRootFile(const std::string& path)
 void
 PresetsGraph::ApplyContext(const MacroContext& context)
 {
+  m_LoadedFiles.clear();
+  m_PresetNamesByFile.clear();
+  m_PresetModel = PresetModel{};
+  m_InheritanceGraph = PresetInheritanceGraph{};
+  m_WorkflowDiagnostics.clear();
+
   for(const auto rootId : m_RootFileIds) {
     (void) TryLoadFileNode(rootId);
   }
@@ -106,7 +301,10 @@ PresetsGraph::ApplyContext(const MacroContext& context)
             includePath = parentPath / includePath;
           }
         }
-        const auto normalized = includePath.lexically_normal().generic_string();
+        const auto normalized =
+          std::filesystem::absolute(includePath)
+            .lexically_normal()
+            .generic_string();
 
         const auto targetId = m_IncludeGraph.EnsureFileNode(normalized);
         m_IncludeGraph.AddIncludeEdge(nodeId, targetId);
@@ -130,6 +328,8 @@ PresetsGraph::ApplyContext(const MacroContext& context)
     }
   }
 
+  RefreshInheritanceGraph();
+  ValidateWorkflowPresets();
   m_InheritanceGraph.Resolve(context);
 }
 
@@ -155,6 +355,24 @@ PresetInheritanceGraph&
 PresetsGraph::GetInheritanceGraph()
 {
   return m_InheritanceGraph;
+}
+
+const PresetModel&
+PresetsGraph::GetPresetModel() const
+{
+  return m_PresetModel;
+}
+
+PresetModel&
+PresetsGraph::GetPresetModel()
+{
+  return m_PresetModel;
+}
+
+const std::vector<WorkflowDiagnostic>&
+PresetsGraph::GetWorkflowDiagnostics() const
+{
+  return m_WorkflowDiagnostics;
 }
 
 PresetsGraphState
@@ -230,12 +448,14 @@ PresetsGraph::MeetsMinimum(const CMakeVersion& required) const
 bool
 PresetsGraph::TryLoadFileNode(PresetIncludeGraph::NodeId nodeId)
 {
-  auto& payload = m_IncludeGraph.GetFilePayload(nodeId);
-  if(m_LoadedFiles.find(payload.FilePath) != m_LoadedFiles.end()) {
+  const auto filePath = m_IncludeGraph.GetFilePayload(nodeId).FilePath;
+  if(m_LoadedFiles.find(filePath) != m_LoadedFiles.end()) {
     return true;
   }
 
-  const auto loadResult = m_FileLoader.LoadFile(payload.FilePath);
+  m_IncludeGraph.GetFilePayload(nodeId).PendingIncludes.clear();
+
+  const auto loadResult = m_FileLoader.LoadFile(filePath);
   if(!loadResult.Success) {
     m_IncludeGraph.MarkFileUnresolved(nodeId,
       UnresolvedReason::FileDoesNotExist);
@@ -257,7 +477,7 @@ PresetsGraph::TryLoadFileNode(PresetIncludeGraph::NodeId nodeId)
   }
 
   const auto presetVersion = json["version"].get<unsigned>();
-  payload.PresetFileVersion = presetVersion;
+  m_IncludeGraph.GetFilePayload(nodeId).PresetFileVersion = presetVersion;
 
   if(!IsVersionSupported(presetVersion)) {
     m_IncludeGraph.MarkFileUnresolved(nodeId,
@@ -267,8 +487,9 @@ PresetsGraph::TryLoadFileNode(PresetIncludeGraph::NodeId nodeId)
   if(json.contains("cmakeMinimumRequired")) {
     const auto minimum = TryReadVersion(json["cmakeMinimumRequired"]);
     if(minimum.has_value()) {
-      payload.CMakeMinimumRequired = std::to_string(minimum->Major) + "."
-        + std::to_string(minimum->Minor) + "." + std::to_string(minimum->Patch);
+      m_IncludeGraph.GetFilePayload(nodeId).CMakeMinimumRequired =
+        std::to_string(minimum->Major) + "." + std::to_string(minimum->Minor)
+        + "." + std::to_string(minimum->Patch);
       if(!MeetsMinimum(*minimum)) {
         m_IncludeGraph.MarkFileUnresolved(nodeId,
           UnresolvedReason::CMakeMinimumRequiredNotMet);
@@ -280,52 +501,128 @@ PresetsGraph::TryLoadFileNode(PresetIncludeGraph::NodeId nodeId)
     if(presetVersion < 4) {
       m_IncludeGraph.MarkFileUnresolved(nodeId,
         UnresolvedReason::IncludeFieldUnsupportedInPresetVersion);
-      m_LoadedFiles.insert(payload.FilePath);
+      m_LoadedFiles.insert(filePath);
       return true;
     }
 
     if(json["include"].is_array()) {
       for(const auto& includeValue : json["include"]) {
         if(includeValue.is_string()) {
-          payload.PendingIncludes.push_back(includeValue.get<std::string>());
+          m_IncludeGraph.GetFilePayload(nodeId).PendingIncludes.push_back(
+            includeValue.get<std::string>());
         }
       }
     }
   }
 
-  if(json.contains("configurePresets") && json["configurePresets"].is_array()) {
-    for(const auto& presetJson : json["configurePresets"]) {
-      if(!presetJson.is_object() || !presetJson.contains("name")
-        || !presetJson["name"].is_string())
-      {
-        continue;
-      }
-
-      auto payloadPreset =
-        PresetPayload{.Name = presetJson["name"].get<std::string>()};
-      payloadPreset.Hidden = presetJson.value("hidden", false);
-      payloadPreset.UsesVendorMacro =
-        presetJson.dump().find("$vendor{") != std::string::npos;
-      if(presetJson.contains("inherits") && presetJson["inherits"].is_array()) {
-        for(const auto& inheritsName : presetJson["inherits"]) {
-          if(inheritsName.is_string()) {
-            payloadPreset.PendingInherits.push_back(
-              inheritsName.get<std::string>());
-          }
-        }
-      }
-
-      if(presetJson.contains("condition")) {
-        payloadPreset.ConditionAst =
-          std::make_unique<EqualsCondition>("${missingMacro}", "x");
-      }
-
-      m_InheritanceGraph.AddPreset(std::move(payloadPreset));
+  const auto currentPath = std::filesystem::path(filePath);
+  if(currentPath.filename() == "CMakeUserPresets.json") {
+    auto sibling = currentPath.parent_path() / "CMakePresets.json";
+    sibling = std::filesystem::absolute(sibling).lexically_normal();
+    const auto siblingPath = sibling.generic_string();
+    const auto siblingLoadResult = m_FileLoader.LoadFile(siblingPath);
+    if(siblingLoadResult.Success) {
+      const auto siblingId = m_IncludeGraph.EnsureFileNode(siblingPath);
+      m_IncludeGraph.AddIncludeEdge(nodeId, siblingId);
+      (void) TryLoadFileNode(siblingId);
     }
   }
 
-  m_LoadedFiles.insert(payload.FilePath);
+  for(const auto& presetName : m_PresetNamesByFile[filePath]) {
+    m_PresetModel.RemovePreset(presetName);
+  }
+  auto publishedNames = std::vector<std::string>{};
+  IngestPresetArray(m_PresetModel, publishedNames, json, "configurePresets",
+    PresetKind::Configure);
+  IngestPresetArray(m_PresetModel, publishedNames, json, "buildPresets",
+    PresetKind::Build);
+  IngestPresetArray(m_PresetModel, publishedNames, json, "testPresets",
+    PresetKind::Test);
+  IngestPresetArray(m_PresetModel, publishedNames, json, "packagePresets",
+    PresetKind::Package);
+  IngestPresetArray(m_PresetModel, publishedNames, json, "workflowPresets",
+    PresetKind::Workflow);
+  m_PresetNamesByFile[filePath] = std::move(publishedNames);
+
+  m_LoadedFiles.insert(filePath);
   return true;
+}
+
+void
+PresetsGraph::RefreshInheritanceGraph()
+{
+  m_InheritanceGraph = PresetInheritanceGraph{};
+  for(const auto* preset : m_PresetModel.GetPresets()) {
+    if(preset->GetType() == PresetKind::Workflow) {
+      continue;
+    }
+
+    auto inheritancePayload = PresetPayload{
+      .Name = preset->GetName(),
+      .Hidden = preset->GetHidden(),
+      .UsesVendorMacro = HasVendorMacro(preset->GetRawJson()),
+      .ConditionAst = nullptr,
+      .PendingInherits = preset->GetInherits(),
+      .Availability = PresetAvailability::Active,
+      .IsUnresolved = false,
+      .Reason = std::nullopt,
+    };
+
+    if(preset->GetCondition() != nullptr) {
+      inheritancePayload.ConditionAst = preset->GetCondition()->Clone();
+    }
+
+    if(preset->GetIsUnresolved() && preset->GetReason().has_value()) {
+      inheritancePayload.IsUnresolved = true;
+      inheritancePayload.Reason = preset->GetReason();
+    }
+
+    m_InheritanceGraph.AddPreset(std::move(inheritancePayload));
+  }
+}
+
+void
+PresetsGraph::ValidateWorkflowPresets()
+{
+  for(const auto* preset : m_PresetModel.GetPresets()) {
+    const auto* workflow = dynamic_cast<const WorkflowPreset*>(preset);
+    if(workflow == nullptr) {
+      continue;
+    }
+
+    const auto& steps = workflow->GetSteps();
+    if(steps.empty() || steps.front().Type != WorkflowStepType::Configure
+      || m_PresetModel.GetPreset<ConfigurePreset>(steps.front().Name)
+        == nullptr)
+    {
+      m_WorkflowDiagnostics.push_back(WorkflowDiagnostic{
+        .PresetName = workflow->GetName(),
+        .Message = "First workflow step must reference a configure preset.",
+      });
+      continue;
+    }
+
+    const auto& configureName = steps.front().Name;
+    for(size_t index = 1; index < steps.size(); ++index) {
+      const ConfigureConsumerPreset* consumer = nullptr;
+      if(steps[index].Type == WorkflowStepType::Build) {
+        consumer = m_PresetModel.GetPreset<BuildPreset>(steps[index].Name);
+      } else if(steps[index].Type == WorkflowStepType::Test) {
+        consumer = m_PresetModel.GetPreset<TestPreset>(steps[index].Name);
+      } else if(steps[index].Type == WorkflowStepType::Package) {
+        consumer = m_PresetModel.GetPreset<PackagePreset>(steps[index].Name);
+      }
+
+      if(consumer == nullptr || consumer->GetConfigurePreset() != configureName)
+      {
+        m_WorkflowDiagnostics.push_back(WorkflowDiagnostic{
+          .PresetName = workflow->GetName(),
+          .Message =
+            "Workflow step configurePreset does not match the first step.",
+        });
+      }
+    }
+  }
 }
 
 }  // namespace nhc::preset_graph

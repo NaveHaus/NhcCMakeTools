@@ -3,6 +3,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <filesystem>
 #include <unordered_map>
 
 #include "PresetsGraph.h"
@@ -12,10 +13,20 @@ namespace {
 using nhc::preset_graph::CMakeVersion;
 using nhc::preset_graph::FileLoadResult;
 using nhc::preset_graph::FileLoader;
+using nhc::preset_graph::BuildPreset;
+using nhc::preset_graph::ConfigurePreset;
 using nhc::preset_graph::MacroContext;
+using nhc::preset_graph::PresetKind;
 using nhc::preset_graph::PresetsGraph;
 using nhc::preset_graph::PresetsGraphState;
 using nhc::preset_graph::UnresolvedReason;
+using nhc::preset_graph::WorkflowPreset;
+
+std::string
+Abs(const std::string& path)
+{
+  return std::filesystem::absolute(path).lexically_normal().generic_string();
+}
 
 class TestFileLoader final : public FileLoader
 {
@@ -27,11 +38,24 @@ class TestFileLoader final : public FileLoader
   {
     ++LoadCount;
     const auto it = Files.find(path);
-    if(it == Files.end()) {
-      return FileLoadResult{.Success = false, .FileDoesNotExist = true};
+    if(it != Files.end()) {
+      return FileLoadResult{.Success = true, .Contents = it->second};
     }
 
-    return FileLoadResult{.Success = true, .Contents = it->second};
+    const auto normalizedPath = Abs(path);
+    for(const auto& [candidatePath, contents] : Files) {
+      if(Abs(candidatePath) == normalizedPath) {
+        return FileLoadResult{.Success = true, .Contents = contents};
+      }
+    }
+
+    {
+      return FileLoadResult{
+        .Success = false,
+        .FileDoesNotExist = true,
+        .Contents = {},
+      };
+    }
   }
 };
 
@@ -155,7 +179,7 @@ SCENARIO("Relative include paths resolve from including file directory")
       THEN("The include resolves relative to the parent file")
       {
         REQUIRE(manager.GetIncludeGraph().GetFilePayload(1).FilePath
-          == "a/b/c/extra.json");
+          == Abs("a/b/c/extra.json"));
       }
     }
   }
@@ -180,7 +204,7 @@ SCENARIO("fileDir macro is injected for include expansion")
       THEN("The include resolves using fileDir")
       {
         REQUIRE(manager.GetIncludeGraph().GetFilePayload(1).FilePath
-          == "a/b/extra.json");
+          == Abs("a/b/extra.json"));
       }
     }
   }
@@ -205,7 +229,7 @@ SCENARIO("dollar macro is injected for include expansion")
       THEN("The include expands to a literal dollar")
       {
         REQUIRE(manager.GetIncludeGraph().GetFilePayload(1).FilePath
-          == "a/$special.json");
+          == Abs("a/$special.json"));
       }
     }
   }
@@ -356,6 +380,176 @@ SCENARIO("Composite state is unresolved when inheritance graph is unresolved")
         REQUIRE(manager.GetInheritanceGraph().ComputeState()
           == nhc::preset_graph::InheritanceGraphState::Unresolved);
         REQUIRE(manager.ComputeState() == PresetsGraphState::Unresolved);
+      }
+    }
+  }
+}
+
+SCENARIO("Root CMakeUserPresets implicitly includes sibling CMakePresets")
+{
+  GIVEN("A user presets root with a readable sibling project presets file")
+  {
+    auto loader = TestFileLoader{};
+    loader.Files["a/CMakeUserPresets.json"] = R"({"version":10})";
+    loader.Files["a/CMakePresets.json"] = R"({"version":10})";
+
+    auto manager = PresetsGraph(loader, CMakeVersion{.Major = 3, .Minor = 31});
+    const auto userId = manager.AddRootFile("a/CMakeUserPresets.json");
+
+    WHEN("Context is applied")
+    {
+      manager.ApplyContext(MacroContext{});
+
+      THEN("The sibling project presets file is included")
+      {
+        REQUIRE(manager.GetIncludeGraph().FileCount() == 2U);
+        REQUIRE(manager.GetIncludeGraph().GetIncludedFiles(userId).size()
+          == 1U);
+        REQUIRE(
+          manager.GetIncludeGraph()
+            .GetFilePayload(
+              manager.GetIncludeGraph().GetIncludedFiles(userId).front())
+            .FilePath
+          == Abs("a/CMakePresets.json"));
+      }
+    }
+  }
+}
+
+SCENARIO("Root CMakeUserPresets does not include absent sibling")
+{
+  GIVEN("A user presets root without a readable sibling project presets file")
+  {
+    auto loader = TestFileLoader{};
+    loader.Files["a/CMakeUserPresets.json"] = R"({"version":10})";
+
+    auto manager = PresetsGraph(loader, CMakeVersion{.Major = 3, .Minor = 31});
+    const auto userId = manager.AddRootFile("a/CMakeUserPresets.json");
+
+    WHEN("Context is applied")
+    {
+      manager.ApplyContext(MacroContext{});
+
+      THEN("No implicit include edge is created")
+      {
+        REQUIRE(manager.GetIncludeGraph().FileCount() == 1U);
+        REQUIRE(manager.GetIncludeGraph().GetIncludedFiles(userId).empty());
+      }
+    }
+  }
+}
+
+SCENARIO("Manager ingests all supported preset collections")
+{
+  GIVEN("A preset file containing one preset of each supported kind")
+  {
+    auto loader = TestFileLoader{};
+    loader.Files["CMakePresets.json"] = R"({
+      "version": 10,
+      "configurePresets": [{"name":"cfg","generator":"Ninja"}],
+      "buildPresets": [{"name":"bld","configurePreset":"cfg"}],
+      "testPresets": [{"name":"tst","configurePreset":"cfg"}],
+      "packagePresets": [{"name":"pkg","configurePreset":"cfg"}],
+      "workflowPresets": [{"name":"wrk","steps":[{"type":"configure","name":"cfg"}]}]
+    })";
+
+    auto manager = PresetsGraph(loader, CMakeVersion{.Major = 3, .Minor = 31});
+    manager.AddRootFile("CMakePresets.json");
+
+    WHEN("Context is applied")
+    {
+      manager.ApplyContext(MacroContext{});
+
+      THEN("The model stores typed presets and workflow stays model-only")
+      {
+        REQUIRE(manager.GetPresetModel().GetPresetKind("cfg")
+          == PresetKind::Configure);
+        REQUIRE(manager.GetPresetModel().GetPresetKind("bld")
+          == PresetKind::Build);
+        REQUIRE(manager.GetPresetModel().GetPresetKind("tst")
+          == PresetKind::Test);
+        REQUIRE(manager.GetPresetModel().GetPresetKind("pkg")
+          == PresetKind::Package);
+        REQUIRE(manager.GetPresetModel().GetPresetKind("wrk")
+          == PresetKind::Workflow);
+        REQUIRE(manager.GetInheritanceGraph().ComputeState()
+          == nhc::preset_graph::InheritanceGraphState::Resolved);
+      }
+    }
+  }
+}
+
+SCENARIO("Manager parses preset conditions during ingestion")
+{
+  GIVEN("Presets with boolean, object, null, and invalid conditions")
+  {
+    auto loader = TestFileLoader{};
+    loader.Files["CMakePresets.json"] = R"({
+      "version": 10,
+      "configurePresets": [
+        {"name":"enabled","condition":true},
+        {"name":"matched","condition":{"type":"equals","lhs":"${presetName}","rhs":"matched"}},
+        {"name":"cleared","condition":null},
+        {"name":"bad","condition":{"type":"unknown"}}
+      ]
+    })";
+
+    auto manager = PresetsGraph(loader, CMakeVersion{.Major = 3, .Minor = 31});
+    manager.AddRootFile("CMakePresets.json");
+
+    WHEN("Context is applied")
+    {
+      auto context = MacroContext{};
+      context.SetMacro("presetName", "matched");
+      manager.ApplyContext(context);
+
+      THEN("Condition declarations and invalid diagnostics are retained")
+      {
+        REQUIRE(
+          manager.GetPresetModel()
+            .GetPreset<ConfigurePreset>("enabled")
+            ->GetCondition()
+          != nullptr);
+        REQUIRE(
+          manager.GetPresetModel()
+            .GetPreset<ConfigurePreset>("cleared")
+            ->GetConditionState()
+          == nhc::preset_graph::PresetConditionState::ExplicitNull);
+        REQUIRE(manager.GetPresetModel().GetPreset("bad").GetReason()
+          == UnresolvedReason::InvalidCondition);
+        REQUIRE(manager.ComputeState() == PresetsGraphState::Unresolved);
+      }
+    }
+  }
+}
+
+SCENARIO("Workflow validation records mismatched configure preset diagnostics")
+{
+  GIVEN("A workflow whose build step uses a different configure preset")
+  {
+    auto loader = TestFileLoader{};
+    loader.Files["CMakePresets.json"] = R"({
+      "version": 10,
+      "configurePresets": [{"name":"cfg"},{"name":"other"}],
+      "buildPresets": [{"name":"bld","configurePreset":"other"}],
+      "workflowPresets": [{"name":"wrk","steps":[
+        {"type":"configure","name":"cfg"},
+        {"type":"build","name":"bld"}
+      ]}]
+    })";
+
+    auto manager = PresetsGraph(loader, CMakeVersion{.Major = 3, .Minor = 31});
+    manager.AddRootFile("CMakePresets.json");
+
+    WHEN("Context is applied")
+    {
+      manager.ApplyContext(MacroContext{});
+
+      THEN("The workflow remains queryable and receives a diagnostic")
+      {
+        REQUIRE(manager.GetPresetModel().GetPreset<WorkflowPreset>("wrk")
+          != nullptr);
+        REQUIRE_FALSE(manager.GetWorkflowDiagnostics().empty());
       }
     }
   }

@@ -4,6 +4,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <memory>
+#include <nlohmann/json.hpp>
 
 #include "Condition.h"
 #include "MacroContext.h"
@@ -22,6 +23,8 @@ using nhc::preset_graph::NotEqualsCondition;
 using nhc::preset_graph::NotInListCondition;
 using nhc::preset_graph::NotMatchesCondition;
 using nhc::preset_graph::AnyOfCondition;
+using nhc::preset_graph::ConditionParseStatus;
+using nhc::preset_graph::ParseConditionJson;
 
 }  // namespace
 
@@ -341,6 +344,100 @@ SCENARIO("NotCondition preserves unknown")
       THEN("The result is unknown")
       {
         REQUIRE(result == ConditionResult::Unknown);
+      }
+    }
+  }
+}
+
+SCENARIO("Top-level JSON boolean condition parses as constant")
+{
+  GIVEN("A true JSON condition value")
+  {
+    const auto value = nlohmann::json(true);
+
+    WHEN("The condition is parsed")
+    {
+      auto parsed = ParseConditionJson(value);
+
+      THEN("It evaluates to true")
+      {
+        REQUIRE(parsed.Status == ConditionParseStatus::Parsed);
+        REQUIRE(parsed.ConditionAst != nullptr);
+        REQUIRE(parsed.ConditionAst->Evaluate(MacroContext{})
+          == ConditionResult::True);
+      }
+    }
+  }
+}
+
+SCENARIO("JSON condition object parses by type")
+{
+  GIVEN("An equals condition object")
+  {
+    const auto value = nlohmann::json{
+      {"type", "equals"},
+      {"lhs", "${presetName}"},
+      {"rhs", "default"},
+    };
+    auto context = MacroContext{};
+    context.SetMacro("presetName", "default");
+
+    WHEN("The condition is parsed")
+    {
+      auto parsed = ParseConditionJson(value);
+
+      THEN("It evaluates using the object members")
+      {
+        REQUIRE(parsed.Status == ConditionParseStatus::Parsed);
+        REQUIRE(parsed.ConditionAst->Evaluate(context)
+          == ConditionResult::True);
+      }
+    }
+  }
+}
+
+SCENARIO("Top-level JSON null condition parses as explicit null marker")
+{
+  GIVEN("A null JSON condition value")
+  {
+    const auto value = nlohmann::json{};
+
+    WHEN("The condition is parsed")
+    {
+      const auto parsed = ParseConditionJson(value);
+
+      THEN("It reports explicit null without an AST")
+      {
+        REQUIRE(parsed.Status == ConditionParseStatus::ExplicitNull);
+        REQUIRE(parsed.ConditionAst == nullptr);
+      }
+    }
+  }
+}
+
+SCENARIO("Invalid JSON condition wire forms report parse failure")
+{
+  GIVEN("Nested null and unknown condition type values")
+  {
+    const auto nestedNull = nlohmann::json{
+      {"type", "not"},
+      {"condition", nullptr},
+    };
+    const auto unknownType = nlohmann::json{
+      {"type", "platformEquals"},
+      {"lhs", "x"},
+      {"rhs", "y"},
+    };
+
+    WHEN("The conditions are parsed")
+    {
+      const auto parsedNestedNull = ParseConditionJson(nestedNull);
+      const auto parsedUnknownType = ParseConditionJson(unknownType);
+
+      THEN("Both report invalid syntax")
+      {
+        REQUIRE(parsedNestedNull.Status == ConditionParseStatus::Invalid);
+        REQUIRE(parsedUnknownType.Status == ConditionParseStatus::Invalid);
       }
     }
   }

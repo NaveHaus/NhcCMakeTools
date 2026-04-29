@@ -4,6 +4,7 @@
 #pragma once
 
 #include <memory>
+#include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
 
@@ -27,6 +28,9 @@ class Condition
 
   /// Evaluates this condition against the supplied macro context.
   virtual ConditionResult Evaluate(const MacroContext& context) const = 0;
+
+  /// Creates an equivalent condition node.
+  virtual std::unique_ptr<Condition> Clone() const = 0;
 };
 
 /// Constant boolean condition node.
@@ -36,6 +40,7 @@ class ConstCondition final : public Condition
   explicit ConstCondition(bool value);
 
   ConditionResult Evaluate(const MacroContext& context) const override;
+  std::unique_ptr<Condition> Clone() const override;
 
   private:
   bool m_Value;
@@ -48,6 +53,7 @@ class EqualsCondition final : public Condition
   EqualsCondition(std::string left, std::string right);
 
   ConditionResult Evaluate(const MacroContext& context) const override;
+  std::unique_ptr<Condition> Clone() const override;
 
   private:
   std::string m_Left;
@@ -61,6 +67,7 @@ class NotEqualsCondition final : public Condition
   NotEqualsCondition(std::string left, std::string right);
 
   ConditionResult Evaluate(const MacroContext& context) const override;
+  std::unique_ptr<Condition> Clone() const override;
 
   private:
   std::string m_Left;
@@ -74,6 +81,7 @@ class InListCondition final : public Condition
   InListCondition(std::string value, std::vector<std::string> values);
 
   ConditionResult Evaluate(const MacroContext& context) const override;
+  std::unique_ptr<Condition> Clone() const override;
 
   private:
   std::string m_Value;
@@ -87,6 +95,7 @@ class NotInListCondition final : public Condition
   NotInListCondition(std::string value, std::vector<std::string> values);
 
   ConditionResult Evaluate(const MacroContext& context) const override;
+  std::unique_ptr<Condition> Clone() const override;
 
   private:
   std::string m_Value;
@@ -100,6 +109,7 @@ class MatchesCondition final : public Condition
   MatchesCondition(std::string value, std::string pattern);
 
   ConditionResult Evaluate(const MacroContext& context) const override;
+  std::unique_ptr<Condition> Clone() const override;
 
   private:
   std::string m_Value;
@@ -113,6 +123,7 @@ class NotMatchesCondition final : public Condition
   NotMatchesCondition(std::string value, std::string pattern);
 
   ConditionResult Evaluate(const MacroContext& context) const override;
+  std::unique_ptr<Condition> Clone() const override;
 
   private:
   std::string m_Value;
@@ -128,6 +139,7 @@ class AllOfCondition final : public Condition
   void AddCondition(std::unique_ptr<Condition> condition);
 
   ConditionResult Evaluate(const MacroContext& context) const override;
+  std::unique_ptr<Condition> Clone() const override;
 
   private:
   std::vector<std::unique_ptr<Condition>> m_Children;
@@ -142,6 +154,7 @@ class AnyOfCondition final : public Condition
   void AddCondition(std::unique_ptr<Condition> condition);
 
   ConditionResult Evaluate(const MacroContext& context) const override;
+  std::unique_ptr<Condition> Clone() const override;
 
   private:
   std::vector<std::unique_ptr<Condition>> m_Children;
@@ -154,9 +167,26 @@ class NotCondition final : public Condition
   explicit NotCondition(std::unique_ptr<Condition> child);
 
   ConditionResult Evaluate(const MacroContext& context) const override;
+  std::unique_ptr<Condition> Clone() const override;
 
   private:
   std::unique_ptr<Condition> m_Child;
 };
+
+enum class ConditionParseStatus
+{
+  Parsed,
+  ExplicitNull,
+  Invalid
+};
+
+struct ConditionParseResult
+{
+  ConditionParseStatus Status = ConditionParseStatus::Invalid;
+  std::unique_ptr<Condition> ConditionAst;
+};
+
+/// Parses a CMake preset condition JSON value.
+ConditionParseResult ParseConditionJson(const nlohmann::json& value);
 
 }  // namespace nhc::preset_graph

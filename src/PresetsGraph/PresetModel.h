@@ -4,6 +4,7 @@
 #pragma once
 
 #include <memory>
+#include <nlohmann/json.hpp>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -27,6 +28,26 @@ enum class PresetKind
 using PresetEnvironment =
   std::unordered_map<std::string, std::optional<std::string>>;
 
+enum class PresetConditionState
+{
+  Absent,
+  ExplicitNull,
+  Expression
+};
+
+enum class ResolvedFieldStatus
+{
+  Unresolved,
+  PartiallyResolved,
+  FullyResolved
+};
+
+struct ResolvedField
+{
+  nlohmann::json Value;
+  ResolvedFieldStatus Status = ResolvedFieldStatus::Unresolved;
+};
+
 class Preset
 {
   public:
@@ -45,16 +66,37 @@ class Preset
 
   const Condition* GetCondition() const;
   void SetCondition(std::unique_ptr<Condition> condition);
+  PresetConditionState GetConditionState() const;
+  void SetConditionExplicitNull();
+  void ClearCondition();
 
   const PresetEnvironment& GetEnvironment() const;
   void SetEnvironment(PresetEnvironment environment);
+
+  const nlohmann::json& GetRawJson() const;
+  void SetRawJson(nlohmann::json rawJson);
+
+  const std::unordered_map<std::string, ResolvedField>& GetResolvedFields()
+    const;
+  void ClearResolvedFields();
+  void SetResolvedField(std::string fieldName, ResolvedField field);
+
+  bool GetIsUnresolved() const;
+  const std::optional<UnresolvedReason>& GetReason() const;
+  void MarkUnresolved(UnresolvedReason reason);
+  void ClearUnresolved();
 
   protected:
   std::string m_Name;
   bool m_Hidden = false;
   std::vector<std::string> m_Inherits;
+  PresetConditionState m_ConditionState = PresetConditionState::Absent;
   std::unique_ptr<Condition> m_Condition;
   PresetEnvironment m_Environment;
+  nlohmann::json m_RawJson = nlohmann::json::object();
+  std::unordered_map<std::string, ResolvedField> m_ResolvedFields;
+  bool m_IsUnresolved = false;
+  std::optional<UnresolvedReason> m_Reason;
 };
 
 class ConfigurePreset : public Preset
@@ -159,6 +201,7 @@ class PresetModel
 {
   public:
   void AddPreset(std::unique_ptr<Preset> preset);
+  void RemovePreset(const std::string& name);
 
   const Preset& GetPreset(const std::string& name) const;
 
@@ -171,11 +214,18 @@ class PresetModel
 
   PresetKind GetPresetKind(const std::string& name) const;
 
+  std::vector<const Preset*> GetPresets() const;
+
+  const Condition* ResolveCondition(const std::string& name) const;
+
+  void RefreshResolvedState(const std::string& name,
+    const MacroContext& context = MacroContext{});
+
   ResolvedPreset ResolvePreset(const std::string& name,
-    const MacroContext& context = MacroContext{}) const;
+    const MacroContext& context = MacroContext{});
 
   private:
-  struct RawResolvedPreset
+  struct MergedPresetFields
   {
     PresetKind Type = PresetKind::Configure;
     std::string Name;
@@ -184,9 +234,10 @@ class PresetModel
     std::optional<std::string> EffectiveGenerator;
 
     std::unordered_map<std::string, std::string> RawEnvironment;
+    std::unordered_map<std::string, nlohmann::json> RawFields;
   };
 
-  RawResolvedPreset ResolveRawPreset(const std::string& name) const;
+  MergedPresetFields ResolveMergedFields(const std::string& name) const;
 
   std::unordered_map<std::string, std::unique_ptr<Preset>> m_Presets;
 };
