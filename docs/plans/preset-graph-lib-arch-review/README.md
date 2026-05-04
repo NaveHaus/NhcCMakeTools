@@ -36,7 +36,7 @@ recommendation.
 
 ### 1. fix-include-resolution-policy
 
-Status: Pending
+Status: Artifacts Created
 
 Purpose:
 - Fix include macro-policy enforcement at the manager integration boundary.
@@ -55,7 +55,7 @@ Depends On:
 
 ### 2. fix-effective-condition-availability
 
-Status: Pending
+Status: Artifacts Created
 
 Purpose:
 - Fix inherited condition availability evaluation.
@@ -73,7 +73,7 @@ Depends On:
 
 ### 3. fix-manager-version-and-reapply-state
 
-Status: Pending
+Status: Artifacts Created
 
 Purpose:
 - Fix manager-level CMake version mapping and repeated context application.
@@ -92,7 +92,7 @@ Depends On:
 
 ### 4. tighten-workflow-preset-api
 
-Status: Pending
+Status: Artifacts Created
 
 Purpose:
 - Complete workflow preset typed API hiding.
@@ -108,7 +108,7 @@ Depends On:
 
 ### 5. complete-resolved-state-model
 
-Status: Pending
+Status: Artifacts Created
 
 Purpose:
 - Bring resolved-state behavior into alignment with the `preset-model` spec.
@@ -130,7 +130,7 @@ Depends On:
 
 ### 6. add-presets-graph-query-facade
 
-Status: Pending
+Status: Artifacts Created
 
 Purpose:
 - Add a lightweight query facade after the underlying graph and model behavior
@@ -152,7 +152,7 @@ Depends On:
 
 ### 7. unify-workflow-diagnostics
 
-Status: Pending
+Status: Artifacts Created
 
 Purpose:
 - Decide and implement how workflow validation diagnostics should be surfaced.
@@ -189,6 +189,7 @@ flowchart LR
   WorkflowApi --> WorkflowDiagnostics
 
   classDef artifactsCreated fill:#2563eb,stroke:#93c5fd,stroke-width:1px,color:#ffffff
+  class IncludePolicy,VersionReapply,ConditionAvailability,ResolvedState,QueryFacade,WorkflowApi,WorkflowDiagnostics artifactsCreated
 ```
 
 Nodes with the blue marker have OpenSpec artifacts created.
