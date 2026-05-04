@@ -80,8 +80,7 @@ To maintain repository integrity, agents MUST follow these rules:
   - Prefer `openspec-ff-change` over `openspec-new`/`openspec-continue` when creating change artifacts for a major feature
 
 **Most common OpenSpec workflow:**
-1. `openspec-new-change`: Initialize the change
-2. `openspec-ff-change`: Generate/update artifacts
+2. `openspec-ff-change`: Create all change artifacts in one go
 3. `nhc-openspec-refine`: Make artifacts implementation-ready (this step may be repeated until no new issues are found)
 4. `openspec-apply-change`: Implement the tasks in `tasks.md` following the TDD RED/GREEN/REFACTOR process
 5. `cmake --workflow --preset=clangd-ninja-vcpkg-release-test`: Verify all tests before completing the change
@@ -228,7 +227,6 @@ To maintain repository integrity, agents MUST follow these rules:
 ### One-Shot Implementation
 Can be used for simple changes that require no investigation or decision making prior to implementation:
 - Generate and review the OpenSpec change artifacts in one shot:
-  - `openspec-new-change <change-name>`
   - `openspec-ff-change <change-name>`
   - `nhc-openspec-refine <change-name>`
 - Implement and verify the change:
@@ -252,7 +250,6 @@ Can be used for straightforward changes that require some upfront investigation 
 - Interactively research and investigate a change with the user:
   - `openspec-explore <topic>`
 - Generate and review the OpenSpec change artifacts in one shot:
-  - `openspec-new-change <change-name>`
   - `openspec-ff-change <change-name>`
   - `nhc-openspec-refine <change-name>`
 - Implement and verify the change:
