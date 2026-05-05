@@ -2,7 +2,7 @@
 
 - [ ] 1.1 Add or update `tests/PresetsGraph/PresetModelTests.cpp` scenarios that fail for preset-owned expanded environment entries with per-entry resolution status.
 - [ ] 1.2 Add or update `tests/PresetsGraph/PresetModelTests.cpp` scenarios that fail for unresolved environment references being preserved in resolved environment entries.
-- [ ] 1.3 Add or update `tests/PresetsGraph/PresetModelTests.cpp` scenarios that fail for additional scalar resolved-state coverage such as `cmakeGeneratorPlatform`.
+- [ ] 1.3 Add or update `tests/PresetsGraph/PresetModelTests.cpp` scenarios that fail for additional scalar resolved-state coverage such as `cmakeExecutable`.
 - [ ] 1.4 Register any new or renamed preset-model tests in `tests/PresetsGraph/CMakeLists.txt` if needed and run the focused preset-model test target in the RED state.
 
 ## 2. Preset-owned resolved-state implementation

@@ -37,10 +37,10 @@ The system SHALL NOT require a separate model-managed `ResolvedPreset` or `RawRe
 - **AND** the entry for `B` is marked partially resolved
 
 #### Scenario: Tracking additional scalar preset fields in resolved state
-- **GIVEN** a ConfigurePreset whose raw JSON `cmakeGeneratorPlatform` is `"${hostSystemName}"`
-- **WHEN** the preset refreshes its resolved state with `hostSystemName` defined
-- **THEN** the preset's resolved state stores the expanded `cmakeGeneratorPlatform` value
-- **AND** the `cmakeGeneratorPlatform` entry is marked fully resolved
+- **GIVEN** a ConfigurePreset whose raw JSON `cmakeExecutable` is `"${sourceDir}/tools/cmake"`
+- **WHEN** the preset refreshes its resolved state with `sourceDir` defined
+- **THEN** the preset's resolved state stores the expanded `cmakeExecutable` value
+- **AND** the `cmakeExecutable` entry is marked fully resolved
 
 ### Requirement: Diagnostic-Friendly Resolved State
 The preset resolved-state model SHALL preserve unresolved macro references exactly as produced by the library's macro-expansion rules.

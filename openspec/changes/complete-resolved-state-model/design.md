@@ -11,7 +11,7 @@ This change is intentionally limited to OpenSpec artifacts. It defines the imple
 - Make preset-owned resolved fields the authoritative resolved-state interface for `preset-model`.
 - Require environment values to be expanded into preset-owned resolved state with one tracked resolved entry per environment key.
 - Preserve partial and unresolved expansion results exactly, including unresolved environment references.
-- Extend resolved scalar coverage incrementally to additional library-relevant string fields instead of keeping the current four-field special case.
+- Extend resolved scalar coverage incrementally to additional library-relevant CMake preset string fields instead of keeping the current four-field special case.
 - Define a migration path away from the public `ResolvedPreset` API without forcing a flag day.
 
 **Non-Goals:**
@@ -39,7 +39,7 @@ Alternative considered:
 
 ### 3. Scalar field coverage expands by a maintained allowlist
 
-The implementation direction should grow resolved scalar coverage through an explicit list of library-relevant preset field names rather than trying to infer expandability dynamically from arbitrary JSON. This stays consistent with existing code structure while allowing incremental additions such as generator-adjacent string fields.
+The implementation direction should grow resolved scalar coverage through an explicit list of library-relevant CMake preset field names rather than trying to infer expandability dynamically from arbitrary JSON. This stays consistent with existing code structure while allowing incremental additions such as `cmakeExecutable`.
 
 Alternative considered:
 - Expand every string-valued field from raw JSON automatically. Rejected because it would blur the boundary between typed fields and opaque passthrough JSON, and it risks changing behavior for fields the library does not yet evaluate.
