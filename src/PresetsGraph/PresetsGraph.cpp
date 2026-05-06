@@ -45,6 +45,13 @@ TryReadVersion(const nlohmann::json& value)
   };
 }
 
+void
+ResetFileLoadState(FilePayload& payload)
+{
+  payload.IsUnresolved = false;
+  payload.Reason = std::nullopt;
+}
+
 std::vector<std::string>
 ReadStringOrStringArray(const nlohmann::json& value)
 {
@@ -399,8 +406,13 @@ PresetsGraph::ComputeState() const
 unsigned
 PresetsGraph::SupportedPresetFileVersion() const
 {
-  if(m_SimulatedVersion.Major >= 4) {
+  if(m_SimulatedVersion.Major > 4
+    || (m_SimulatedVersion.Major == 4 && m_SimulatedVersion.Minor >= 3))
+  {
     return 11;
+  }
+  if(m_SimulatedVersion.Major == 4) {
+    return 10;
   }
   if(m_SimulatedVersion.Minor >= 31) {
     return 10;
@@ -454,6 +466,7 @@ PresetsGraph::TryLoadFileNode(PresetIncludeGraph::NodeId nodeId)
   }
 
   m_IncludeGraph.GetFilePayload(nodeId).PendingIncludes.clear();
+  ResetFileLoadState(m_IncludeGraph.GetFilePayload(nodeId));
 
   const auto loadResult = m_FileLoader.LoadFile(filePath);
   if(!loadResult.Success) {

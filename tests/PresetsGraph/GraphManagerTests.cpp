@@ -160,6 +160,68 @@ SCENARIO("Invalid JSON marks node unresolved")
   }
 }
 
+SCENARIO("Reloading a previously missing include clears stale unresolved state")
+{
+  GIVEN("An include file that is missing during the first context application")
+  {
+    auto loader = TestFileLoader{};
+    loader.Files["a/CMakePresets.json"] =
+      R"({"version":10,"include":["missing.json"]})";
+
+    auto manager = PresetsGraph(loader, CMakeVersion{.Major = 3, .Minor = 31});
+    manager.AddRootFile("a/CMakePresets.json");
+    manager.ApplyContext(MacroContext{});
+
+    REQUIRE(manager.GetIncludeGraph().GetFilePayload(1).Reason
+      == UnresolvedReason::FileDoesNotExist);
+
+    WHEN("The file is available during a later context application")
+    {
+      loader.Files["a/missing.json"] = R"({"version":10})";
+      manager.ApplyContext(MacroContext{});
+
+      THEN("The stale missing-file unresolved state is cleared")
+      {
+        const auto& payload = manager.GetIncludeGraph().GetFilePayload(1);
+        REQUIRE_FALSE(payload.IsUnresolved);
+        REQUIRE_FALSE(payload.Reason.has_value());
+      }
+    }
+  }
+}
+
+SCENARIO("Failed reload records the current unresolved reason")
+{
+  GIVEN(
+    "An include file that has invalid JSON during the first context application")
+  {
+    auto loader = TestFileLoader{};
+    loader.Files["a/CMakePresets.json"] =
+      R"({"version":10,"include":["bad.json"]})";
+    loader.Files["a/bad.json"] = "not json";
+
+    auto manager = PresetsGraph(loader, CMakeVersion{.Major = 3, .Minor = 31});
+    manager.AddRootFile("a/CMakePresets.json");
+    manager.ApplyContext(MacroContext{});
+
+    REQUIRE(manager.GetIncludeGraph().GetFilePayload(1).Reason
+      == UnresolvedReason::InvalidJson);
+
+    WHEN("The file is absent during a later context application")
+    {
+      loader.Files.erase("a/bad.json");
+      manager.ApplyContext(MacroContext{});
+
+      THEN("The unresolved reason is assigned from the current load attempt")
+      {
+        const auto& payload = manager.GetIncludeGraph().GetFilePayload(1);
+        REQUIRE(payload.IsUnresolved);
+        REQUIRE(payload.Reason == UnresolvedReason::FileDoesNotExist);
+      }
+    }
+  }
+}
+
 SCENARIO("Relative include paths resolve from including file directory")
 {
   GIVEN("A relative include path")
@@ -277,6 +339,53 @@ SCENARIO("Unsupported preset version is reported")
       {
         REQUIRE(manager.GetIncludeGraph().GetFilePayload(0).Reason
           == UnresolvedReason::PresetVersionUnsupported);
+      }
+    }
+  }
+}
+
+SCENARIO("CMake 4.2 supports preset file version 10")
+{
+  GIVEN("A manager simulating CMake 4.2")
+  {
+    auto loader = TestFileLoader{};
+    loader.Files["CMakePresets.json"] = R"({"version":11})";
+
+    auto manager = PresetsGraph(loader, CMakeVersion{.Major = 4, .Minor = 2});
+    manager.AddRootFile("CMakePresets.json");
+
+    WHEN("A preset file version 11 file is loaded")
+    {
+      manager.ApplyContext(MacroContext{});
+
+      THEN("The file is rejected as newer than supported")
+      {
+        REQUIRE(manager.GetIncludeGraph().GetFilePayload(0).Reason
+          == UnresolvedReason::PresetVersionUnsupported);
+      }
+    }
+  }
+}
+
+SCENARIO("CMake 4.3 supports preset file version 11")
+{
+  GIVEN("A manager simulating CMake 4.3")
+  {
+    auto loader = TestFileLoader{};
+    loader.Files["CMakePresets.json"] = R"({"version":11})";
+
+    auto manager = PresetsGraph(loader, CMakeVersion{.Major = 4, .Minor = 3});
+    manager.AddRootFile("CMakePresets.json");
+
+    WHEN("A preset file version 11 file is loaded")
+    {
+      manager.ApplyContext(MacroContext{});
+
+      THEN("The file is not rejected as newer than supported")
+      {
+        REQUIRE_FALSE(manager.GetIncludeGraph().GetFilePayload(0).IsUnresolved);
+        REQUIRE_FALSE(
+          manager.GetIncludeGraph().GetFilePayload(0).Reason.has_value());
       }
     }
   }
