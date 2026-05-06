@@ -8,6 +8,7 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "Condition.h"
@@ -225,6 +226,9 @@ class PresetModel
     const MacroContext& context = MacroContext{});
 
   private:
+  const Condition* ResolveCondition(const std::string& name,
+    std::unordered_set<std::string>& visiting) const;
+
   struct MergedPresetFields
   {
     PresetKind Type = PresetKind::Configure;

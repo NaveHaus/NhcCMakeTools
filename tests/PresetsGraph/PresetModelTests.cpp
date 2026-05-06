@@ -465,6 +465,32 @@ SCENARIO(
   }
 }
 
+SCENARIO("Effective condition resolution terminates on inherits cycles")
+{
+  GIVEN("Presets with a direct inherits cycle and no local conditions")
+  {
+    PresetModel model;
+
+    auto first = MakeNamedPreset<ConfigurePreset>("A");
+    first->SetInherits({"B"});
+    model.AddPreset(std::move(first));
+
+    auto second = MakeNamedPreset<ConfigurePreset>("B");
+    second->SetInherits({"A"});
+    model.AddPreset(std::move(second));
+
+    WHEN("The effective condition is resolved")
+    {
+      const auto* condition = model.ResolveCondition("A");
+
+      THEN("Lookup completes with no inherited condition")
+      {
+        REQUIRE(condition == nullptr);
+      }
+    }
+  }
+}
+
 SCENARIO("Explicit null condition is not inherited by descendants")
 {
   GIVEN("A grandchild inheriting through a parent with condition null")

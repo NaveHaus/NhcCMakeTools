@@ -3,7 +3,9 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <cstdlib>
 #include <filesystem>
+#include <string_view>
 #include <unordered_map>
 
 #include "PresetsGraph.h"
@@ -15,8 +17,11 @@ using nhc::preset_graph::FileLoadResult;
 using nhc::preset_graph::FileLoader;
 using nhc::preset_graph::BuildPreset;
 using nhc::preset_graph::ConfigurePreset;
+using nhc::preset_graph::PresetAvailability;
+using nhc::preset_graph::PresetInheritanceGraph;
 using nhc::preset_graph::MacroContext;
 using nhc::preset_graph::PresetKind;
+using nhc::preset_graph::PresetPayload;
 using nhc::preset_graph::PresetsGraph;
 using nhc::preset_graph::PresetsGraphState;
 using nhc::preset_graph::UnresolvedReason;
@@ -26,6 +31,23 @@ std::string
 Abs(const std::string& path)
 {
   return std::filesystem::absolute(path).lexically_normal().generic_string();
+}
+
+template<size_t TPresetCount>
+const PresetPayload&
+FindPayload(const PresetInheritanceGraph& graph, std::string_view name)
+{
+  for(auto nodeId = PresetInheritanceGraph::NodeId{0}; nodeId < TPresetCount;
+    ++nodeId)
+  {
+    const auto& payload = graph.GetPresetPayload(nodeId);
+    if(payload.Name == name) {
+      return payload;
+    }
+  }
+
+  FAIL("Preset payload was not found");
+  std::abort();
 }
 
 class TestFileLoader final : public FileLoader
@@ -732,6 +754,98 @@ SCENARIO("Manager parses preset conditions during ingestion")
         REQUIRE(manager.GetPresetModel().GetPreset("bad").GetReason()
           == UnresolvedReason::InvalidCondition);
         REQUIRE(manager.ComputeState() == PresetsGraphState::Unresolved);
+      }
+    }
+  }
+}
+
+SCENARIO("Manager publishes inherited false conditions for availability")
+{
+  GIVEN("A child preset inheriting a false condition")
+  {
+    auto loader = TestFileLoader{};
+    loader.Files["CMakePresets.json"] = R"({
+      "version": 10,
+      "configurePresets": [
+        {"name":"P0","condition":false},
+        {"name":"C","inherits":["P0"]}
+      ]
+    })";
+
+    auto manager = PresetsGraph(loader, CMakeVersion{.Major = 3, .Minor = 31});
+    manager.AddRootFile("CMakePresets.json");
+
+    WHEN("Context is applied")
+    {
+      manager.ApplyContext(MacroContext{});
+
+      THEN("The child preset is disabled by the inherited condition")
+      {
+        const auto& child = FindPayload<2>(manager.GetInheritanceGraph(), "C");
+        REQUIRE(child.Availability == PresetAvailability::Disabled);
+      }
+    }
+  }
+}
+
+SCENARIO("Manager leaves explicit null effective conditions active")
+{
+  GIVEN("A child preset clearing an inherited false condition")
+  {
+    auto loader = TestFileLoader{};
+    loader.Files["CMakePresets.json"] = R"({
+      "version": 10,
+      "configurePresets": [
+        {"name":"P0","condition":false},
+        {"name":"C","inherits":["P0"],"condition":null}
+      ]
+    })";
+
+    auto manager = PresetsGraph(loader, CMakeVersion{.Major = 3, .Minor = 31});
+    manager.AddRootFile("CMakePresets.json");
+
+    WHEN("Context is applied")
+    {
+      manager.ApplyContext(MacroContext{});
+
+      THEN("The cleared condition is absent for availability")
+      {
+        const auto& child = FindPayload<2>(manager.GetInheritanceGraph(), "C");
+        REQUIRE(child.ConditionAst == nullptr);
+        REQUIRE(child.Availability == PresetAvailability::Active);
+      }
+    }
+  }
+}
+
+SCENARIO("Manager preserves inheritance cycle diagnostics after conditions")
+{
+  GIVEN("Presets with a direct inherits cycle")
+  {
+    auto loader = TestFileLoader{};
+    loader.Files["CMakePresets.json"] = R"({
+      "version": 10,
+      "configurePresets": [
+        {"name":"A","inherits":["B"]},
+        {"name":"B","inherits":["A"]}
+      ]
+    })";
+
+    auto manager = PresetsGraph(loader, CMakeVersion{.Major = 3, .Minor = 31});
+    manager.AddRootFile("CMakePresets.json");
+
+    WHEN("Context is applied")
+    {
+      manager.ApplyContext(MacroContext{});
+
+      THEN("Both presets keep the InheritanceCycle diagnostic")
+      {
+        const auto& first = FindPayload<2>(manager.GetInheritanceGraph(), "A");
+        const auto& second = FindPayload<2>(manager.GetInheritanceGraph(), "B");
+        REQUIRE(first.IsUnresolved);
+        REQUIRE(second.IsUnresolved);
+        REQUIRE(first.Reason == UnresolvedReason::InheritanceCycle);
+        REQUIRE(second.Reason == UnresolvedReason::InheritanceCycle);
       }
     }
   }

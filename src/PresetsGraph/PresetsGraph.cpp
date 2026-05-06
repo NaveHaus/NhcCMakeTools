@@ -546,8 +546,11 @@ PresetsGraph::RefreshInheritanceGraph()
       .Reason = std::nullopt,
     };
 
-    if(preset->GetCondition() != nullptr) {
-      inheritancePayload.ConditionAst = preset->GetCondition()->Clone();
+    if(
+      const auto* condition = m_PresetModel.ResolveCondition(preset->GetName());
+      condition != nullptr)
+    {
+      inheritancePayload.ConditionAst = condition->Clone();
     }
 
     if(preset->GetIsUnresolved() && preset->GetReason().has_value()) {

@@ -356,6 +356,14 @@ PresetModel::GetPresets() const
 const Condition*
 PresetModel::ResolveCondition(const std::string& name) const
 {
+  auto visiting = std::unordered_set<std::string>{};
+  return ResolveCondition(name, visiting);
+}
+
+const Condition*
+PresetModel::ResolveCondition(const std::string& name,
+  std::unordered_set<std::string>& visiting) const
+{
   const auto& preset = *m_Presets.at(name);
   if(preset.GetConditionState() == PresetConditionState::Expression) {
     return preset.GetCondition();
@@ -364,12 +372,16 @@ PresetModel::ResolveCondition(const std::string& name) const
     return nullptr;
   }
 
+  if(!visiting.insert(name).second) {
+    return nullptr;
+  }
+
   const Condition* inherited = nullptr;
   for(auto it = preset.GetInherits().rbegin();
     it != preset.GetInherits().rend(); ++it)
   {
     if(m_Presets.contains(*it)) {
-      if(const auto* parentCondition = ResolveCondition(*it);
+      if(const auto* parentCondition = ResolveCondition(*it, visiting);
         parentCondition != nullptr)
       {
         inherited = parentCondition;
@@ -377,6 +389,7 @@ PresetModel::ResolveCondition(const std::string& name) const
     }
   }
 
+  visiting.erase(name);
   return inherited;
 }
 
