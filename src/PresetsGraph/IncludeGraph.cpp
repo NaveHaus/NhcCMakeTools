@@ -154,17 +154,19 @@ void
 PresetIncludeGraph::ResolveIncludes(const MacroContext& context)
 {
   for(NodeId nodeId = 0; nodeId < m_Graph.NodeCount(); ++nodeId) {
-    auto& payload = m_Graph.GetNodePayload(nodeId);
+    const auto filePath = m_Graph.GetNodePayload(nodeId).FilePath;
+    const auto version =
+      m_Graph.GetNodePayload(nodeId).PresetFileVersion.value_or(10U);
+    const auto pendingIncludes = m_Graph.GetNodePayload(nodeId).PendingIncludes;
     std::vector<std::string> remainingIncludes;
 
-    for(const auto& includeValue : payload.PendingIncludes) {
+    for(const auto& includeValue : pendingIncludes) {
       if(ContainsUnsupportedSyntax(includeValue)) {
         MarkFileUnresolved(nodeId, UnresolvedReason::UnsupportedMacro);
         remainingIncludes.push_back(includeValue);
         continue;
       }
 
-      const auto version = payload.PresetFileVersion.value_or(10U);
       const auto braceTokens = ExtractBraceTokens(includeValue);
       if(version == 7 || version == 8) {
         if(!braceTokens.empty()) {
@@ -186,7 +188,7 @@ PresetIncludeGraph::ResolveIncludes(const MacroContext& context)
 
       auto localContext = context;
       localContext.SetMacro("fileDir",
-        std::filesystem::path(payload.FilePath).parent_path().generic_string());
+        std::filesystem::path(filePath).parent_path().generic_string());
       localContext.SetMacro("dollar", "$");
 
       const auto expanded = localContext.ExpandString(includeValue);
@@ -197,17 +199,13 @@ PresetIncludeGraph::ResolveIncludes(const MacroContext& context)
       }
 
       const auto resolvedPath =
-        ResolveIncludePath(payload.FilePath, expanded.ExpandedString);
-      const auto target = FindFileNode(resolvedPath);
-      if(!target.has_value()) {
-        remainingIncludes.push_back(includeValue);
-        continue;
-      }
-
-      m_Graph.AddEdge(nodeId, *target);
+        ResolveIncludePath(filePath, expanded.ExpandedString);
+      const auto target = EnsureFileNode(resolvedPath);
+      m_Graph.AddEdge(nodeId, target);
     }
 
-    payload.PendingIncludes = std::move(remainingIncludes);
+    m_Graph.GetNodePayload(nodeId).PendingIncludes =
+      std::move(remainingIncludes);
   }
 }
 

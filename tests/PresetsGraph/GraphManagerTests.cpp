@@ -32,11 +32,13 @@ class TestFileLoader final : public FileLoader
 {
   public:
   mutable unsigned LoadCount = 0;
+  mutable std::unordered_map<std::string, unsigned> LoadCountsByPath;
   std::unordered_map<std::string, std::string> Files;
 
   FileLoadResult LoadFile(const std::string& path) const override
   {
     ++LoadCount;
+    ++LoadCountsByPath[Abs(path)];
     const auto it = Files.find(path);
     if(it != Files.end()) {
       return FileLoadResult{.Success = true, .Contents = it->second};
@@ -297,6 +299,80 @@ SCENARIO("dollar macro is injected for include expansion")
   }
 }
 
+SCENARIO("Manager reports $env include macros as unsupported")
+{
+  GIVEN("A root file with a $env include macro")
+  {
+    auto loader = TestFileLoader{};
+    loader.Files["a/CMakePresets.json"] =
+      R"({"version":10,"include":["$env{HOME}/extra.json"]})";
+
+    auto manager = PresetsGraph(loader, CMakeVersion{.Major = 3, .Minor = 31});
+    manager.AddRootFile("a/CMakePresets.json");
+
+    WHEN("Context is applied")
+    {
+      manager.ApplyContext(MacroContext{});
+
+      THEN("The root file is unresolved with UnsupportedMacro")
+      {
+        REQUIRE(manager.GetIncludeGraph().GetFilePayload(0).Reason
+          == UnresolvedReason::UnsupportedMacro);
+      }
+    }
+  }
+}
+
+SCENARIO("Manager reports preset-specific include macros as unsupported")
+{
+  GIVEN("A root file with a preset-specific include macro")
+  {
+    auto loader = TestFileLoader{};
+    loader.Files["a/CMakePresets.json"] =
+      R"({"version":10,"include":["${presetName}/extra.json"]})";
+
+    auto context = MacroContext{};
+    context.SetMacro("presetName", "debug");
+    auto manager = PresetsGraph(loader, CMakeVersion{.Major = 3, .Minor = 31});
+    manager.AddRootFile("a/CMakePresets.json");
+
+    WHEN("Context is applied")
+    {
+      manager.ApplyContext(context);
+
+      THEN("The root file is unresolved with UnsupportedMacro")
+      {
+        REQUIRE(manager.GetIncludeGraph().GetFilePayload(0).Reason
+          == UnresolvedReason::UnsupportedMacro);
+      }
+    }
+  }
+}
+
+SCENARIO("Manager reports version 7 fileDir include macros as unsupported")
+{
+  GIVEN("A version 7 root file with a fileDir include macro")
+  {
+    auto loader = TestFileLoader{};
+    loader.Files["a/CMakePresets.json"] =
+      R"({"version":7,"include":["${fileDir}/extra.json"]})";
+
+    auto manager = PresetsGraph(loader, CMakeVersion{.Major = 3, .Minor = 31});
+    manager.AddRootFile("a/CMakePresets.json");
+
+    WHEN("Context is applied")
+    {
+      manager.ApplyContext(MacroContext{});
+
+      THEN("The root file is unresolved with UnsupportedMacro")
+      {
+        REQUIRE(manager.GetIncludeGraph().GetFilePayload(0).Reason
+          == UnresolvedReason::UnsupportedMacro);
+      }
+    }
+  }
+}
+
 SCENARIO("cmakeMinimumRequired is enforced")
 {
   GIVEN("A file requiring newer CMake than simulated")
@@ -462,6 +538,35 @@ SCENARIO("Include cycles are detected")
         REQUIRE(manager.GetIncludeGraph().GetFilePayload(1).Reason
           == UnresolvedReason::IncludeCycle);
         REQUIRE(manager.ComputeState() == PresetsGraphState::Unresolved);
+      }
+    }
+  }
+}
+
+SCENARIO("Applying context tolerates repeated inclusion")
+{
+  GIVEN("A file included directly and through another include")
+  {
+    auto loader = TestFileLoader{};
+    loader.Files["A.json"] = R"({"version":10,"include":["B.json","C.json"]})";
+    loader.Files["B.json"] = R"({"version":10})";
+    loader.Files["C.json"] = R"({"version":10,"include":["B.json"]})";
+
+    auto manager = PresetsGraph(loader, CMakeVersion{.Major = 3, .Minor = 31});
+    manager.AddRootFile("A.json");
+
+    WHEN("Context is applied")
+    {
+      manager.ApplyContext(MacroContext{});
+
+      THEN("The repeated file is loaded once and not reported as a cycle")
+      {
+        const auto repeatedFile =
+          manager.GetIncludeGraph().FindFileNode(Abs("B.json"));
+        REQUIRE(repeatedFile.has_value());
+        REQUIRE(loader.LoadCountsByPath[Abs("B.json")] == 1U);
+        REQUIRE(manager.GetIncludeGraph().GetFilePayload(*repeatedFile).Reason
+          != UnresolvedReason::IncludeCycle);
       }
     }
   }
