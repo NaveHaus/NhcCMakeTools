@@ -171,11 +171,14 @@ class WorkflowPreset : public Preset
   void SetSteps(std::vector<WorkflowStep> steps);
 
   private:
+  using Preset::ClearCondition;
   using Preset::GetCondition;
+  using Preset::GetConditionState;
   using Preset::GetEnvironment;
   using Preset::GetHidden;
   using Preset::GetInherits;
   using Preset::SetCondition;
+  using Preset::SetConditionExplicitNull;
   using Preset::SetEnvironment;
   using Preset::SetHidden;
   using Preset::SetInherits;

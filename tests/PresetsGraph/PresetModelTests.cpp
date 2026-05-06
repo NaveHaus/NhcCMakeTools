@@ -50,6 +50,21 @@ concept HasGetCondition = requires(const TPreset& preset) {
 };
 
 template<typename TPreset>
+concept HasGetConditionState = requires(const TPreset& preset) {
+  preset.GetConditionState();
+};
+
+template<typename TPreset>
+concept HasSetConditionExplicitNull = requires(TPreset& preset) {
+  preset.SetConditionExplicitNull();
+};
+
+template<typename TPreset>
+concept HasClearCondition = requires(TPreset& preset) {
+  preset.ClearCondition();
+};
+
+template<typename TPreset>
 concept HasGetEnvironment = requires(const TPreset& preset) {
   preset.GetEnvironment();
 };
@@ -111,6 +126,9 @@ SCENARIO("Preset hierarchy exposes common and type-specific fields")
       static_assert(!HasGetHidden<WorkflowPreset>);
       static_assert(!HasGetInherits<WorkflowPreset>);
       static_assert(!HasGetCondition<WorkflowPreset>);
+      static_assert(!HasGetConditionState<WorkflowPreset>);
+      static_assert(!HasSetConditionExplicitNull<WorkflowPreset>);
+      static_assert(!HasClearCondition<WorkflowPreset>);
       static_assert(!HasGetEnvironment<WorkflowPreset>);
       REQUIRE(workflow->GetName() == "wrk");
       REQUIRE(workflow->GetSteps().size() == 1);
