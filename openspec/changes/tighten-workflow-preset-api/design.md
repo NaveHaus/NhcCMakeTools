@@ -29,6 +29,7 @@ This change is intentionally narrow. It does not alter workflow parsing, storage
 3. Prefer compile-time API hiding over runtime "do not use" conventions.
    - Rationale: the issue is an API-surface leak. The fix should remove typed access rather than relying on documentation or runtime behavior.
    - Alternative considered: document the helpers as unsupported while leaving them callable. Rejected because it preserves the contract mismatch.
+   - Alternative considered: use composition or a non-inheritance `WorkflowPreset` that holds a `Preset` by value or pointer instead of deriving from it, so unsupported inherited members structurally cannot exist on `WorkflowPreset`. Rejected because the rest of the `preset-model` library already stores presets polymorphically through `Preset*`; breaking the inheritance chain would require pervasive changes to storage, retrieval, and graph-resolution code that are out of scope for a narrow API-surface correction. Access hiding achieves the same typed-API contract with minimal disruption.
 
 ## Risks / Trade-offs
 

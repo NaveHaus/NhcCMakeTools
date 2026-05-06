@@ -15,6 +15,13 @@ The manager SHALL use the Include Graph as the authoritative resolver for includ
 - **THEN** the Manager preserves the Include Graph unresolved diagnostic for that file node
 - **AND** the unresolved reason reported for that file is `UnsupportedMacro`
 
+#### Scenario: Applying context tolerates repeated inclusion of the same file
+- **GIVEN** file A includes file B and file C
+- **AND** file C also includes file B
+- **WHEN** the Manager applies a context
+- **THEN** file B is loaded exactly once
+- **AND** file B is not marked Unresolved with reason `IncludeCycle`
+
 ### Requirement: File-Derived Macro Population
 When resolving include strings within a specific preset file node, the Presets Graph Manager SHALL populate the Macro Context with macro values that can be derived from the file node.
 

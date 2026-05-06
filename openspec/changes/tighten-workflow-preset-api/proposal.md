@@ -5,7 +5,7 @@
 ## What Changes
 
 - Tighten the typed `WorkflowPreset` API so unsupported inherited accessors are hidden from callers.
-- Preserve the existing workflow-preset model contract that only `name`, `steps`, `displayName`, `description`, and `vendor` are part of the workflow-facing typed surface.
+- Preserve the existing workflow-preset model contract that only `name` and `steps` are part of the workflow-facing typed surface.
 - Clarify the spec requirements around unsupported workflow accessors so implementation and tests target the remaining API-hiding gap directly.
 
 ## Capabilities

@@ -19,3 +19,4 @@
 - [ ] 3.1 Reconfigure the affected build preset if test registration or CMake inputs change.
 - [ ] 3.2 Build and run the targeted `PresetModel` and inheritance/graph test executables for the RED/GREEN cycle.
 - [ ] 3.3 Run the required workflow verification preset and confirm the full preset-graph test suite passes with the new effective-condition behavior.
+- [ ] 3.4 **REGRESSION**: Add a scenario exercising a cyclic `inherits` graph after effective-condition publishing and confirm the Inheritance Graph still reports `InheritanceCycle` for affected presets — cycle-safe condition lookup MUST NOT suppress or replace that diagnostic.

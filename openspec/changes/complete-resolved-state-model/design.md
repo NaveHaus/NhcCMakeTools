@@ -30,16 +30,29 @@ The spec delta will reinforce that callers are expected to use preset-owned reso
 Alternative considered:
 - Keep `ResolvedPreset` as a peer public contract. Rejected because it duplicates merge logic, omits per-field status, and drifts from the spec.
 
-### 2. Expanded environment entries are stored as per-key resolved fields
+### 2. Expanded environment entries are stored as per-key resolved fields under a nested `environment` resolved field
 
-Resolved state will track each effective environment entry independently after inheritance merge and environment expansion. This allows one key to be `FullyResolved` while another remains `PartiallyExpanded`, which is not possible if the whole environment block is treated as one opaque fully resolved object.
+Resolved state will track each effective environment entry independently after inheritance merge and environment expansion. Resolved environment entries are stored under a single `environment` key in the resolved-state object, using a nested object keyed by environment variable name. Each nested entry carries the expanded value and its resolution status. This mirrors the raw JSON `environment` field shape, avoids encoding concerns with dots or brackets in variable names, and keeps the resolved-state structure consistent with other structured fields such as `cacheVariables`.
 
-Alternative considered:
+This allows one key to be `FullyResolved` while another remains `PartiallyExpanded`, which is not possible if the whole environment block is treated as one opaque fully resolved object.
+
+Alternatives considered:
 - Store one resolved JSON object for the full environment map. Rejected because it collapses status to the map level and loses the per-entry diagnostic behavior required by the spec.
+- Flattened keys such as `environment.<name>`. Rejected because dots are valid in some environment variable names on certain platforms, introducing ambiguity at the key level.
+- Bracketed keys such as `environment[<name>]`. Rejected because bracket syntax has no established precedent in the codebase and requires escaping for variable names that contain brackets.
 
-### 3. Scalar field coverage expands by a maintained allowlist
+### 3. Scalar field coverage expands by a maintained allowlist with explicit inclusion criteria
 
 The implementation direction should grow resolved scalar coverage through an explicit list of library-relevant CMake preset field names rather than trying to infer expandability dynamically from arbitrary JSON. This stays consistent with existing code structure while allowing incremental additions such as `cmakeExecutable`.
+
+A CMake preset string field is eligible for the scalar allowlist when it meets ALL of the following criteria:
+1. It is defined as a string-typed field by the CMake `cmake-presets(7)` manual for at least one preset type.
+2. It accepts macro expansion in CMake (i.e., the manual does not describe it as a verbatim or passthrough value).
+3. It is not a structured map or array — fields such as `cacheVariables` and `environment` are handled by their own resolved-state mechanisms.
+4. It is not reserved exclusively for IDE or tooling consumers (e.g., `cmakeExecutable` is in scope; hypothetical IDE-only vendor extension fields are not).
+5. The library already reads or evaluates the field, or the field is required by a new test scenario in this change.
+
+Fields that do not meet all five criteria MUST NOT be added to the scalar allowlist without an explicit design note justifying the exception.
 
 Alternative considered:
 - Expand every string-valued field from raw JSON automatically. Rejected because it would blur the boundary between typed fields and opaque passthrough JSON, and it risks changing behavior for fields the library does not yet evaluate.

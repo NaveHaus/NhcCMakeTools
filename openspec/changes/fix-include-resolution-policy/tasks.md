@@ -6,6 +6,7 @@
 - [ ] 1.4 **GREEN**: Refactor `PresetsGraph::ApplyContext()` so per-file include resolution delegates macro-policy enforcement to `PresetIncludeGraph` while preserving file-derived macro injection and iterative discovery.
 - [ ] 1.5 **GREEN**: Update manager/include-graph integration plumbing so newly resolved file paths continue to load and refresh correctly after delegation.
 - [ ] 1.6 **REFACTOR**: Review the manager/include-graph boundary for duplicated include-policy logic and remove any remaining redundant checks.
+- [ ] 1.7 **REFACTOR**: Verify that the delegation refactor does not regress non-macro include semantics: (a) relative-path resolution is internal to `PresetIncludeGraph` and tested in `GraphIncludeTests`; (b) include-cycle detection operates in the manager's iterative loop, is not in the delegation path, and is covered by the permanent manager spec's Resolution Cycle Detection requirement; (c) repeated inclusion tolerance (same file included via multiple paths is loaded once, not marked `IncludeCycle`) is covered by the "Applying context tolerates repeated inclusion" scenario in the delta spec — add a manager-boundary test for it if no existing coverage is found.
 
 ## 2. Verification
 

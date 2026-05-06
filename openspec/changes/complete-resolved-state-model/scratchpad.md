@@ -3,7 +3,7 @@
 Tracks openspec-refine issues and working decisions for `complete-resolved-state-model` artifacts.
 This is a working document, not a spec artifact.
 
-Last updated: 2026-05-04
+Last updated: 2026-05-05
 
 ## Status Legend
 - **Open**: Not yet captured consistently in OpenSpec artifacts.
@@ -36,17 +36,16 @@ Last updated: 2026-05-04
 ## Issue List
 
 ### P0(1): Environment resolved-entry key convention remains unspecified
-- Status: Open
+- Status: Consistent
 - Notes:
   - The spec requires resolved-state keys to use CMake preset field names and also requires one tracked resolved entry per environment key.
-  - `tasks.md` requires stable per-key field naming, but no artifact chooses the convention.
-  - Remediation requires a user choice because the convention affects the public resolved-state surface.
-  - Options:
-    - Use flattened keys such as `environment.<name>`.
-    - Use bracketed keys such as `environment[<name>]`.
-    - Store a resolved `environment` field whose value contains per-entry metadata.
+  - `tasks.md` required stable per-key field naming, but no artifact had chosen the convention.
+  - Resolved by selecting the nested `environment` object convention: the resolved-state object stores a single `environment` key whose value is a nested object keyed by environment variable name, each entry carrying its expanded value and resolution status.
+  - Flattened keys (`environment.<name>`) and bracketed keys (`environment[<name>]`) were rejected in `design.md` with rationale.
 - Artifacts touched:
-  - None.
+  - `openspec/changes/complete-resolved-state-model/design.md` — Decision 2 updated with convention, rationale, and rejected alternatives
+  - `openspec/changes/complete-resolved-state-model/specs/preset-model/spec.md` — resolved-state requirement updated to specify nested `environment` key convention
+  - `openspec/changes/complete-resolved-state-model/tasks.md` — Task 2.1 updated to reference nested `environment` key convention
 
 ### P1(1): Additional scalar example used a non-preset field name
 - Status: Consistent
@@ -60,11 +59,12 @@ Last updated: 2026-05-04
   - `openspec/changes/complete-resolved-state-model/specs/preset-model/spec.md`
 
 ### P1(2): Scalar allowlist inclusion criteria remain implicit
-- Status: Open
+- Status: Consistent
 - Notes:
   - The best-practice comparison for D3 says newly added CMake fields should be reviewed against manual semantics before entering the resolved scalar model.
-  - The design calls for an explicit list of library-relevant CMake preset field names, and tasks require extending the allowlist to fields required by tests, but no artifact defines the criteria used to decide whether a field belongs in the maintained scalar allowlist.
-  - Without explicit criteria, future additions may accidentally treat IDE-only fields, path-like fields, structured maps, or opaque passthrough JSON as equivalent scalar expansion targets.
-  - Remediation should define the allowlist criteria and make the initial field selection traceable to those criteria.
+  - No artifact had defined the criteria used to decide whether a field belongs in the maintained scalar allowlist.
+  - Resolved by adding five explicit inclusion criteria to `design.md` Decision 3: (1) defined as a string field by the CMake manual, (2) accepts macro expansion, (3) not a structured map or array, (4) not reserved exclusively for IDE/tooling consumers, (5) the library already reads the field or it is required by a new test scenario. Fields failing any criterion require a design note to be added.
+  - `tasks.md` Task 2.3 updated to reference the criteria explicitly so future implementors apply the gate during allowlist extension.
 - Artifacts touched:
-  - None.
+  - `openspec/changes/complete-resolved-state-model/design.md` — Decision 3 updated with five explicit allowlist inclusion criteria and a constraint on exceptions
+  - `openspec/changes/complete-resolved-state-model/tasks.md` — Task 2.3 updated to reference the five criteria

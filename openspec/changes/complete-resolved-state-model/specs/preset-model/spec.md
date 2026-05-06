@@ -10,8 +10,8 @@ The resolved-state object SHALL:
 - Store the current resolved value for each tracked field after inheritance merge and macro expansion.
 - Record whether each tracked field is unresolved, partially resolved, or fully resolved.
 - Preserve structured fields using JSON when the field is not naturally a scalar string.
-- Represent effective environment entries in preset-owned resolved state after environment merge and expansion, with one tracked resolved entry per environment key.
-- Track library-relevant macro-expandable scalar preset fields beyond `generator`, `installDir`, `binaryDir`, and `toolchainFile` as coverage is added.
+- Represent effective environment entries in preset-owned resolved state after environment merge and expansion, with one tracked resolved entry per environment key, stored under a single `environment` key in the resolved-state object using a nested object keyed by environment variable name.
+- Track library-relevant macro-expandable scalar preset fields beyond `generator`, `installDir`, `binaryDir`, and `toolchainFile` as coverage is added, using the scalar allowlist inclusion criteria defined in the design.
 
 The system SHALL NOT require a separate model-managed `ResolvedPreset` or `RawResolvedPreset` object to represent resolved state, and preset-owned resolved fields SHALL be the authoritative resolved-state interface for callers.
 

@@ -5,12 +5,22 @@ The Presets Graph Manager SHALL clear a file node's unresolved load state before
 
 If the reload attempt succeeds, the file node SHALL remain cleared of any prior unresolved load reason from an earlier failed attempt.
 
+If the reload attempt fails, the file node SHALL be left marked Unresolved with the reason assigned by the current reload attempt, not any reason carried over from a prior attempt.
+
 #### Scenario: Successful reload clears stale unresolved file state
 - **GIVEN** a previous `ApplyContext()` call marked a file node Unresolved with reason `FileDoesNotExist`
 - **AND** the file is made available before the next `ApplyContext()` call
 - **WHEN** the Manager retries loading that file on the later `ApplyContext()` call
 - **THEN** the Manager clears the prior unresolved load state before the retry
 - **AND** the file node is not left marked Unresolved with reason `FileDoesNotExist` after the successful reload
+
+#### Scenario: Failed reload after reset records current-attempt reason
+- **GIVEN** a previous `ApplyContext()` call marked a file node Unresolved with reason `ParseError`
+- **AND** the file is removed before the next `ApplyContext()` call
+- **WHEN** the Manager retries loading that file on the later `ApplyContext()` call
+- **THEN** the Manager clears the prior unresolved load state before the retry
+- **AND** the file node is left marked Unresolved with reason `FileDoesNotExist`
+- **AND** the file node is not left marked Unresolved with the stale reason `ParseError` from the prior attempt
 
 ## MODIFIED Requirements
 

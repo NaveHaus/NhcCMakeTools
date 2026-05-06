@@ -7,9 +7,9 @@
 
 ## 2. Preset-owned resolved-state implementation
 
-- [ ] 2.1 Update `PresetModel` resolved-state refresh logic to store expanded effective environment entries as preset-owned resolved fields with stable per-key field naming.
+- [ ] 2.1 Update `PresetModel` resolved-state refresh logic to store expanded effective environment entries as preset-owned resolved fields under a nested `environment` key, with each environment variable name as a sub-key carrying its expanded value and resolution status.
 - [ ] 2.2 Update `PresetModel` resolved-state refresh logic to preserve `FullyResolved`, `PartiallyExpanded`, and unresolved status per environment entry.
-- [ ] 2.3 Extend the scalar field allowlist used for resolved-state expansion to cover the next set of library-relevant string fields required by the new tests.
+- [ ] 2.3 Extend the scalar field allowlist used for resolved-state expansion to cover the next set of library-relevant string fields required by the new tests, verifying each candidate against the five allowlist inclusion criteria in the design before adding it.
 - [ ] 2.4 Keep one shared internal merge and expansion pipeline so preset-owned resolved fields and compatibility paths do not diverge.
 - [ ] 2.5 Build and run the focused preset-model tests until the GREEN state is reached.
 

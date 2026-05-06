@@ -40,5 +40,5 @@ Alternatives considered:
 
 ## Risks / Trade-offs
 
-- Boundary logic can regress again if future CMake releases add a new preset version and the mapping remains hand-coded. Mitigation: add explicit boundary scenarios for both 4.2 and 4.3 in the spec and tests.
+- Boundary logic can regress again if future CMake releases add a new preset version and the mapping remains hand-coded. Mitigation: add explicit boundary scenarios for both 4.2 and 4.3 in the spec and tests. When CMake introduces a preset-file version beyond 11, the hand-coded boundary logic SHOULD be reconsidered in favor of the table-driven mapping approach rejected for this change.
 - Clearing unresolved load state too aggressively could hide legitimate unresolved diagnostics if the current load attempt fails to set a new reason. Mitigation: keep the reset scoped to the file currently being retried and preserve the existing failure paths that assign fresh reasons.

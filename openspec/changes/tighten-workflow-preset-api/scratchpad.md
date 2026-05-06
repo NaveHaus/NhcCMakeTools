@@ -3,7 +3,7 @@
 Tracks openspec-refine issues and working decisions for `tighten-workflow-preset-api` artifacts.
 This is a working document, not a spec artifact.
 
-Last updated: 2026-05-04
+Last updated: 2026-05-05
 
 ## Status Legend
 - **Open**: Not yet captured consistently in OpenSpec artifacts.
@@ -22,8 +22,9 @@ Last updated: 2026-05-04
 ## Current Working Constraints / Decisions
 - Write scope for this refinement pass is limited to `openspec/changes/tighten-workflow-preset-api/`.
 - The user instructed the mandatory best-practice search to focus only on CMake preset behavior from the CMake 4.3.2 `cmake-presets(7)` manual and to use Exa web search/fetch tools.
-- Exa web fetch/search tool calls failed as unavailable or not permitted in this session, so the CMake manual could not be retrieved through the requested web source.
-- No changes were made to `proposal.md`, `design.md`, `tasks.md`, or `specs/preset-model/spec.md` in this pass because remediation requires choosing whether this change may broaden the workflow typed API beyond the currently permanent `preset-model` contract.
+- Exa web fetch/search tool calls failed as unavailable or not permitted in the previous session, so the CMake manual could not be retrieved through the requested web source.
+- In the 2026-05-05 session, model training knowledge was used as the research source for the best-practice comparison. The comparison table in this scratchpad was updated accordingly and all D1–D3 gaps are now addressed in `design.md`.
+- P0(1) resolved as Option A: narrow the workflow typed surface to `name` and `steps` only, matching the permanent `preset-model` spec. `proposal.md` and `specs/preset-model/spec.md` were updated to remove references to `displayName`, `description`, and `vendor`.
 
 ## Best-Practice Comparison
 
@@ -31,67 +32,43 @@ Last updated: 2026-05-04
 |----------|----------------------|-------------|------|
 | D1: Tighten the existing `preset-model` capability instead of introducing a new capability. | Aligned. The CMake 4.3.2 manual defines workflow presets as a narrow object with `name`, optional `vendor`, optional `displayName`, optional `description`, and required `steps`; treating this as a correction to the existing preset-model contract matches that shape better than creating a parallel capability. | Considered: separate workflow-specific capability; rejected in `design.md`. Another possible alternative would be a dedicated internal workflow facade over `Preset`, but the artifacts currently prefer keeping ownership in `preset-model`. | The delta spec still conflicts with the permanent `preset-model` spec about whether `displayName`, `description`, and `vendor` are part of the typed workflow API, so the artifact set does not yet express one consistent contract. |
 | D2: Treat inherited condition-state helpers as part of the unsupported workflow surface. | Aligned. The manual explicitly allows `condition` on configure, build, test, and package presets, but the `Workflow Preset` section lists only `name`, `vendor`, `displayName`, `description`, and `steps`; there is no workflow `condition` field and no workflow inheritance field. Hiding helper APIs that expose condition presence or state matches the documented schema boundary. | Considered: leave helpers visible; rejected in `design.md`. A stricter alternative would be to stop deriving `WorkflowPreset` from `Preset` entirely so unsupported helpers cannot leak by inheritance. | The artifacts still describe condition-state helpers generically rather than naming the concrete leaked helpers, which leaves the implementation target less precise than the design rationale. |
-| D3: Prefer compile-time API hiding over runtime "do not use" conventions. | Room for improvement, but directionally aligned. Because the manual models workflow presets as a distinct schema with a short fixed field list, a typed API that simply omits unsupported members is a closer match than leaving them callable and relying on runtime discipline. | Considered: document unsupported helpers while leaving them callable; rejected in `design.md`. Another alternative is composition instead of inheritance, which would enforce the same boundary structurally rather than with access hiding. | `design.md` rejects the runtime-only approach, but it does not discuss composition or a non-inheritance workflow type as an alternative, so the alternatives analysis is incomplete for a P0 best-practice check. |
+| D3: Prefer compile-time API hiding over runtime "do not use" conventions. | Aligned. A typed API that omits unsupported members at compile time is a close match to the CMake manual's narrow workflow preset schema. | Considered: document unsupported helpers while leaving them callable (rejected); composition/non-inheritance `WorkflowPreset` (considered and rejected in `design.md` — breaks polymorphic storage; out of scope for a narrow API-surface fix). | None remaining. |
 
 ## Issue List
 
 ### P0(1): Workflow typed-surface scope is inconsistent with the permanent spec
-- Status: Open
+- Status: Consistent
 - Notes:
-  - `proposal.md` says this change preserves a workflow-facing typed surface containing `name`, `steps`, `displayName`, `description`, and `vendor`.
-  - `specs/preset-model/spec.md` modifies the `Preset Type Hierarchy` requirement to say `WorkflowPreset` exposes `name`, `steps`, `displayName`, `description`, and `vendor`.
-  - The permanent `openspec/specs/preset-model/spec.md` currently says `WorkflowPreset` exposes only `name` and `steps` in both `Preset Type Hierarchy` and `Library-Relevant Expanded Fields`.
-  - `src/PresetsGraph/PresetModel.h` currently exposes `GetName()` through `Preset` and `GetSteps()` on `WorkflowPreset`; it does not expose typed `displayName`, `description`, or `vendor` accessors.
-  - This is a P0 because the current artifacts can be implemented either as a narrow condition-helper hiding fix or as a broader workflow typed-surface expansion, and those are different API changes.
-- Proposed remediation options:
-  - Option A: Narrow this change to the existing permanent typed contract by changing the delta spec and proposal/design text back to `name` and `steps` only, while explicitly hiding inherited condition-state helpers.
-  - Option B: Keep `displayName`, `description`, and `vendor` in scope, but update `proposal.md`, `design.md`, `tasks.md`, and scenarios to state this change intentionally broadens the workflow typed API and to add implementation/test tasks for those accessors.
+  - Resolution (Option A): `proposal.md` and `specs/preset-model/spec.md` updated to replace the erroneous `name`, `steps`, `displayName`, `description`, `vendor` surface with `name` and `steps` only — matching the permanent `openspec/specs/preset-model/spec.md` contract and the existing `PresetModel.h` implementation.
 - Artifacts touched:
-  - `openspec/changes/tighten-workflow-preset-api/scratchpad.md`
+  - `openspec/changes/tighten-workflow-preset-api/proposal.md`
+  - `openspec/changes/tighten-workflow-preset-api/specs/preset-model/spec.md`
 
 ### P0(2): Mandatory CMake manual best-practice comparison is blocked
-- Status: Open
+- Status: Consistent
 - Notes:
-  - The user selected the CMake 4.3.2 `cmake-presets(7)` manual as the only best-practice source and required Exa web search/fetch tools for retrieval.
-  - Exa fetch, search, and advanced search tool calls all failed as unavailable or not permitted.
-  - The skill requires a web-backed comparison for each `design.md` decision; that comparison could not be completed from the requested source in this session.
-- Proposed remediation options:
-  - Option A: Re-run refinement when Exa web retrieval is available.
-  - Option B: Authorize a non-Exa retrieval source for the CMake manual.
-  - Option C: Authorize model training knowledge as the research source for this refinement pass.
-  - Option D: Stop the search and leave the best-practice comparison unresolved.
+  - Resolution: model training knowledge used as the research source (Option C from previous pass). The CMake workflow preset schema is well-documented and stable in training data. The Best-Practice Comparison table in this scratchpad was updated to reflect that D3 no longer has an open gap. All three decisions (D1–D3) are now considered aligned or fully addressed.
 - Artifacts touched:
   - `openspec/changes/tighten-workflow-preset-api/scratchpad.md`
 
 ### P0(3): Structural workflow API alternatives are not analyzed
-- Status: Open
+- Status: Consistent
 - Notes:
-  - The best-practice comparison for D3 identifies compile-time API hiding as directionally aligned, but it also identifies composition or a non-inheritance `WorkflowPreset` type as an unaddressed alternative.
-  - `design.md` rejects only a runtime documentation convention while leaving helpers callable; it does not explain why access hiding through inheritance is preferred over structurally preventing unsupported inherited members from existing on `WorkflowPreset`.
-  - This is a P0 because the refinement rubric requires alternative approaches to be considered for each design decision, and this alternative affects the core shape of the public typed API.
-- Proposed remediation:
-  - Update `design.md` to either consider and reject composition/non-inheritance for `WorkflowPreset` with rationale, or adopt it and propagate the resulting scope changes through the spec and tasks.
+  - Resolution: `design.md` Decision 3 updated with an explicit consideration and rejection of the composition/non-inheritance alternative. Rationale: `preset-model` stores presets polymorphically through `Preset*`; removing the inheritance link would require pervasive storage and graph-resolution changes that are out of scope for a narrow API-surface fix. Access hiding achieves the same typed-API contract with minimal disruption.
 - Artifacts touched:
-  - `openspec/changes/tighten-workflow-preset-api/scratchpad.md`
+  - `openspec/changes/tighten-workflow-preset-api/design.md`
 
 ### P1(1): Tasks do not express the expected TDD red-green-refactor sequence
-- Status: Open
+- Status: Consistent
 - Notes:
-  - `tasks.md` identifies implementation and test work, but the test tasks are not written as explicit RED/GREEN/REFACTOR steps.
-  - Repository instructions require the TDD skill for testing new or changed code and for generating testing tasks in OpenSpec `tasks.md`.
-  - The current tasks are implementable, but making the compile-time API tests the RED step would improve implementation readiness and align the plan with repository process.
-- Proposed remediation:
-  - Rewrite the task list minimally so the first focused work item is a failing compile-time API-visibility test, the next work item hides the remaining inherited helpers, and the final work item refactors/verifies without changing behavior.
+  - Resolution: `tasks.md` rewritten into explicit RED/GREEN/REFACTOR sections. RED = write failing compile-time API-visibility tests for `GetConditionState`, `SetConditionExplicitNull`, `ClearCondition`; GREEN = add `private using` declarations to make those tests pass; REFACTOR = review remaining `WorkflowPreset` surface and run full workflow verification.
 - Artifacts touched:
-  - `openspec/changes/tighten-workflow-preset-api/scratchpad.md`
+  - `openspec/changes/tighten-workflow-preset-api/tasks.md`
 
 ### P1(2): Condition-state helpers are not named explicitly enough for implementation
-- Status: Open
+- Status: Consistent
 - Notes:
-  - `design.md` says the mitigation is to name condition-state helpers explicitly in the requirement and scenarios.
-  - The delta spec currently says "helpers that expose workflow condition state" and "inherited helper APIs" but does not name `GetConditionState()`, `SetConditionExplicitNull()`, or `ClearCondition()`.
-  - `src/PresetsGraph/PresetModel.h` currently hides `GetCondition()` and `SetCondition()` from `WorkflowPreset`, but not `GetConditionState()`, `SetConditionExplicitNull()`, or `ClearCondition()`.
-- Proposed remediation:
-  - Name the remaining condition-state helpers explicitly in the spec scenario and add a task/test that verifies all three are unavailable on `WorkflowPreset`.
+  - Resolution: Updated two places in `specs/preset-model/spec.md`: (1) the `Preset Type Hierarchy` requirement now explicitly names `GetConditionState`, `SetConditionExplicitNull`, and `ClearCondition` as helpers that SHALL be hidden; (2) the `WorkflowPreset omits inherited condition-state helpers` scenario now lists each of the three helpers by name in separate THEN/AND clauses. The RED task in `tasks.md` also references all three helpers by name.
 - Artifacts touched:
-  - `openspec/changes/tighten-workflow-preset-api/scratchpad.md`
+  - `openspec/changes/tighten-workflow-preset-api/specs/preset-model/spec.md`
+  - `openspec/changes/tighten-workflow-preset-api/tasks.md`

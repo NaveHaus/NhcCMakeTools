@@ -3,7 +3,7 @@
 Tracks openspec-refine issues and working decisions for `fix-include-resolution-policy` artifacts.
 This is a working document, not a spec artifact.
 
-Last updated: 2026-05-04
+Last updated: 2026-05-05
 
 ## Status Legend
 - **Open**: Not yet captured consistently in OpenSpec artifacts.
@@ -27,23 +27,24 @@ Last updated: 2026-05-04
 
 ## Best-Practice Comparison
 
+Source: CMake 4.3.2 `cmake-presets(7)` manual — retrieved 2026-05-05 via Exa fetch from https://cmake.org/cmake/help/latest/manual/cmake-presets.7.html.
+
 | Decision | vs. Industry Standard | Alternatives | Gaps |
 |----------|----------------------|-------------|------|
-| D1: Delegate include expansion policy to `PresetIncludeGraph` | Aligned. The CMake 4.3.2 manual defines include expansion as a file-level rule set with version-gated macro support: include paths are relative to the current file, include cycles are forbidden, version 7 permits only `$penv{}` in `include`, and version 9 adds other macros except `$env{}` and preset-specific macros. Keeping that policy in one resolver matches the spec better than duplicating it in the manager. | Considered: re-implement include policy in `PresetsGraph::ApplyContext()`; move discovered-file loading into `PresetIncludeGraph`. The first alternative conflicts with the manual's single include-behavior contract by creating a second policy implementation. The second would mix policy with file-loading orchestration not implied by the manual. | The artifacts compare against macro-allowance behavior, but they do not explicitly mention other include constraints from the manual such as "relative to the current file" and "include cycles are not allowed." |
-| D2: Keep manager orchestration focused on discovery and refresh | Aligned with room for clarification. The manual describes include processing as transitive across files and requires that inheritance across files is valid only when the including chain exists directly or indirectly. That supports a manager loop which resolves includes, loads newly discovered files, and refreshes state until no new files appear, while leaving per-include semantics to the include graph. | Considered: collapse include resolution and loading into a single component. The manual does not require that structure; it only requires correct transitive inclusion behavior, so keeping orchestration separate remains a reasonable design choice. | The artifacts do not explicitly tie the iterative refresh loop to the manual's transitive include model or to the requirement that cross-file inheritance is valid only through an established include chain. |
-| D3: Test the integration at the manager boundary | Aligned. The manual's include behavior depends on preset-file version and macro class, so correctness can fail at the integration boundary even when the include resolver works in isolation. Manager-level tests for `$env{}`, `${presetName}`, and version-gated `${fileDir}` directly exercise the observable behavior CMake specifies for `include`. | Considered: rely only on existing include-graph tests. That misses the documented version-sensitive behavior once the manager constructs per-file macro context and invokes include resolution. | The artifacts focus on unsupported macro diagnostics and do not explicitly call out tests for other documented include semantics such as relative-path resolution, repeated inclusion tolerance, or include-cycle rejection. |
+| D1: Delegate include expansion policy to `PresetIncludeGraph` | **Confirmed aligned** (CMake 4.3.2 manual). Manual defines: (1) include paths are relative to the current file; (2) include cycles are forbidden; (3) v7–8 allows only `$penv{}` in `include`; (4) v9+ allows other macros except `$env{}` and preset-specific macros; (5) a file may be included multiple times from the same file or from different files. Keeping that policy in one resolver matches the manual's per-file rule set and avoids duplicating a multi-rule contract in the manager. | Considered: re-implement in `PresetsGraph::ApplyContext()`; move discovered-file loading into `PresetIncludeGraph`. Both rejected. | ~~Relative-path and cycle constraints not explicitly captured~~ — confirmed covered: relative-path is in the permanent include-graph spec; cycle rejection is in the permanent manager spec's Resolution Cycle Detection requirement. Repeated inclusion tolerance (manual: explicitly allowed) was missing — added as a scenario to the delta spec (P1(5) remediation). |
+| D2: Keep manager orchestration focused on discovery and refresh | **Confirmed aligned**. Manual: "Files included by these files can also include other files" — transitive inclusion is a CMake-defined requirement, directly matched by the manager's iterative discovery loop. Cross-file inheritance validity is a downstream consequence of correct include resolution, not a separate manager contract. | Considered: collapse include resolution and loading into a single component. Rejected. | ~~Iterative loop not tied to transitive model~~ — confirmed resolved: the iterative loop is the direct implementation of the manual's transitive include requirement. No spec change needed. |
+| D3: Test the integration at the manager boundary | **Confirmed aligned**. Manual version-gate rules for `$penv{}` (v7–8) and the v9+ macro expansion are the exact basis for the RED tests. Correctness can fail at the integration boundary even when the include resolver is correct in isolation. | Considered: rely only on existing include-graph tests. Rejected. | ~~Relative-path, repeated-inclusion, include-cycle tests not explicitly called out~~ — confirmed: (1) relative-path resolution is internal to `PresetIncludeGraph`, tested in `GraphIncludeTests`, and covered by the permanent include-graph spec; (2) include-cycle detection is in the manager's iterative loop, not in the delegation path, and covered by the permanent manager spec's Resolution Cycle Detection requirement; (3) repeated-inclusion scenario added to delta spec; task 1.7 requires a manager-boundary test if no existing coverage is found. |
 
 ## Issue List
 
 ### P1(1): Best-practice search source unavailable
-- Status: Open
+- Status: Consistent
 - Notes:
-  - The mandatory best-practice search could not be completed because all Exa web retrieval attempts failed with "not available or not permitted."
-  - The requested source and retrieval constraint prevents replacing this step with another source.
-  - Options for a future pass:
-    - Enable Exa access and rerun the best-practice comparison against the CMake 4.3.2 `cmake-presets(7)` manual.
-    - Permit a different retrieval method for the same CMake manual URL.
-    - Explicitly accept the local-only refinement result without external best-practice confirmation.
+  - Exa fetch succeeded on 2026-05-05 and retrieved the full CMake 4.3.2 `cmake-presets(7)` manual.
+  - All three design decisions (D1–D3) are confirmed aligned with the manual.
+  - The previously noted gaps (relative-path constraint, include-cycle constraint) are confirmed covered by existing permanent specs.
+  - One new gap was found: repeated inclusion tolerance ("a file may be included multiple times from the same file or from different files") was not captured anywhere — addressed by P1(5) remediation.
+  - Best-Practice Comparison table updated with confirmed findings.
 - Artifacts touched:
   - `openspec/changes/fix-include-resolution-policy/scratchpad.md`
 
@@ -86,11 +87,13 @@ Last updated: 2026-05-04
   - `openspec/changes/fix-include-resolution-policy/specs/preset-graph-manager/spec.md`
 
 ### P1(5): Manager delegation tests omit non-macro include semantics
-- Status: Open
+- Status: Consistent
 - Notes:
-  - The best-practice comparison identifies relative-path resolution, repeated inclusion tolerance, and include-cycle rejection as documented include semantics that can be affected by changing the manager/include-graph delegation boundary.
-  - Existing permanent specs already define relative include handling and include-cycle rejection, but this change's implementation tasks only require manager-boundary tests for unsupported macro diagnostics.
-  - Add targeted manager regression coverage for the existing non-macro include semantics affected by `ApplyContext()` delegation, or explicitly document why existing coverage is sufficient for this refactor.
+  - CMake 4.3.2 manual confirms three non-macro include semantics: relative-path resolution, repeated inclusion tolerance, include-cycle rejection.
+  - Relative-path resolution: internal to `PresetIncludeGraph`, covered by the permanent include-graph spec ("interpreted relative to the directory of the including file node") and existing `GraphIncludeTests`. Not affected by the delegation refactor.
+  - Include-cycle rejection: implemented in the manager's iterative loop, not in the delegation path. Covered by the permanent manager spec's Resolution Cycle Detection requirement. Not affected by the delegation refactor.
+  - Repeated inclusion tolerance: CMake manual explicitly states "a file may be included multiple times from the same file or from different files." This was not captured in any spec — added as a new scenario ("Applying context tolerates repeated inclusion of the same file") to the "Context Application Loop" MODIFIED requirement in the delta spec.
+  - Task 1.7 added to the REFACTOR section to require a manager-boundary test for repeated inclusion if no existing coverage is found during implementation.
 - Artifacts touched:
   - `openspec/changes/fix-include-resolution-policy/tasks.md`
   - `openspec/changes/fix-include-resolution-policy/specs/preset-graph-manager/spec.md`
