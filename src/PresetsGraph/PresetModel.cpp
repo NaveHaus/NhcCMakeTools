@@ -82,7 +82,128 @@ bool
 IsScalarPresetField(const std::string& fieldName)
 {
   return fieldName == "generator" || fieldName == "installDir"
-    || fieldName == "binaryDir" || fieldName == "toolchainFile";
+    || fieldName == "binaryDir" || fieldName == "toolchainFile"
+    || fieldName == "cmakeExecutable";
+}
+
+struct ResolvedEnvironmentEntry
+{
+  std::string Value;
+  ResolvedFieldStatus Status = ResolvedFieldStatus::Unresolved;
+};
+
+struct ResolvedEnvironment
+{
+  std::unordered_map<std::string, ResolvedEnvironmentEntry> Entries;
+  ResolvedFieldStatus Status = ResolvedFieldStatus::FullyResolved;
+  std::optional<UnresolvedReason> Reason;
+};
+
+void
+MergeEnvironmentStatus(ResolvedEnvironment& environment,
+  ResolvedFieldStatus status)
+{
+  if(status == ResolvedFieldStatus::Unresolved) {
+    environment.Status = ResolvedFieldStatus::Unresolved;
+    return;
+  }
+
+  if(status == ResolvedFieldStatus::PartiallyResolved
+    && environment.Status == ResolvedFieldStatus::FullyResolved)
+  {
+    environment.Status = ResolvedFieldStatus::PartiallyResolved;
+  }
+}
+
+std::string
+ToString(ResolvedFieldStatus status)
+{
+  switch(status) {
+    case ResolvedFieldStatus::FullyResolved: return "FullyResolved";
+    case ResolvedFieldStatus::PartiallyResolved: return "PartiallyResolved";
+    case ResolvedFieldStatus::Unresolved: return "Unresolved";
+  }
+
+  throw std::logic_error{"Unhandled resolved field status"};
+}
+
+ResolvedEnvironment
+ResolveEnvironmentEntries(
+  const std::unordered_map<std::string, std::string>& rawEnvironment,
+  const std::string& presetName,
+  const std::optional<std::string>& effectiveGenerator,
+  const MacroContext& context)
+{
+  auto result = ResolvedEnvironment{};
+  auto expandedValues = std::unordered_map<std::string, std::string>{};
+  auto visiting = std::unordered_set<std::string>{};
+  auto visited = std::unordered_set<std::string>{};
+
+  std::function<void(const std::string&)> resolveEnvironmentKey;
+  resolveEnvironmentKey = [&](const std::string& key) {
+    if(visited.contains(key) || !rawEnvironment.contains(key)) {
+      return;
+    }
+
+    if(visiting.contains(key)) {
+      const auto& rawValue = rawEnvironment.at(key);
+      result.Entries[key] = ResolvedEnvironmentEntry{
+        .Value = rawValue, .Status = ResolvedFieldStatus::Unresolved};
+      result.Status = ResolvedFieldStatus::Unresolved;
+      result.Reason = UnresolvedReason::EnvironmentCycle;
+      visited.insert(key);
+      return;
+    }
+
+    visiting.insert(key);
+
+    const auto& rawValue = rawEnvironment.at(key);
+    for(const auto& dependency : ExtractEnvDependencies(rawValue)) {
+      if(rawEnvironment.contains(dependency)) {
+        resolveEnvironmentKey(dependency);
+      }
+    }
+
+    auto localContext = context;
+    localContext.SetMacro("presetName", presetName);
+    if(effectiveGenerator.has_value()) {
+      localContext.SetMacro("generator", *effectiveGenerator);
+    }
+
+    for(const auto& [envName, envValue] : expandedValues) {
+      localContext.SetPresetEnvironmentValue(envName, envValue);
+    }
+
+    const auto expanded = localContext.ExpandString(rawValue);
+    const auto status = StatusForExpansion(expanded.Status);
+    expandedValues[key] = expanded.ExpandedString;
+    result.Entries[key] = ResolvedEnvironmentEntry{
+      .Value = expanded.ExpandedString, .Status = status};
+    MergeEnvironmentStatus(result, status);
+
+    visiting.erase(key);
+    visited.insert(key);
+  };
+
+  for(const auto& [key, _] : rawEnvironment) {
+    resolveEnvironmentKey(key);
+  }
+
+  return result;
+}
+
+nlohmann::json
+MakeResolvedEnvironmentJson(const ResolvedEnvironment& environment)
+{
+  auto entries = nlohmann::json::object();
+  for(const auto& [key, entry] : environment.Entries) {
+    entries[key] = nlohmann::json{
+      {"value", entry.Value},
+      {"status", ToString(entry.Status)},
+    };
+  }
+
+  return entries;
 }
 
 }  // namespace
@@ -407,7 +528,20 @@ PresetModel::RefreshResolvedState(const std::string& name,
     localContext.SetMacro("generator", *merged.EffectiveGenerator);
   }
 
+  const auto resolvedEnvironment = ResolveEnvironmentEntries(
+    merged.RawEnvironment, merged.Name, merged.EffectiveGenerator,
+    localContext);
+  if(!resolvedEnvironment.Entries.empty()) {
+    preset.SetResolvedField("environment",
+      ResolvedField{.Value = MakeResolvedEnvironmentJson(resolvedEnvironment),
+        .Status = resolvedEnvironment.Status});
+  }
+
   for(const auto& [fieldName, fieldValue] : merged.RawFields) {
+    if(fieldName == "environment" && !resolvedEnvironment.Entries.empty()) {
+      continue;
+    }
+
     if(fieldValue.is_string() && IsScalarPresetField(fieldName)) {
       const auto expanded =
         localContext.ExpandString(fieldValue.get<std::string>());
@@ -433,60 +567,15 @@ PresetModel::ResolvePreset(const std::string& name, const MacroContext& context)
   result.InstallDir = raw.InstallDir;
   result.EffectiveGenerator = raw.EffectiveGenerator;
 
-  auto expandedValues = std::unordered_map<std::string, std::string>{};
-  auto expandedStatusByKey = std::unordered_map<std::string, ExpansionStatus>{};
-  auto visiting = std::unordered_set<std::string>{};
-  auto visited = std::unordered_set<std::string>{};
-
-  std::function<void(const std::string&)> resolveEnvironmentKey;
-  resolveEnvironmentKey = [&](const std::string& key) {
-    if(visited.contains(key) || !raw.RawEnvironment.contains(key)) {
-      return;
-    }
-
-    if(visiting.contains(key)) {
-      result.EnvironmentStatus = ExpansionStatus::PartiallyExpanded;
-      result.Reason = UnresolvedReason::EnvironmentCycle;
-      return;
-    }
-
-    visiting.insert(key);
-
-    const auto& rawValue = raw.RawEnvironment.at(key);
-    for(const auto& dependency : ExtractEnvDependencies(rawValue)) {
-      if(raw.RawEnvironment.contains(dependency)) {
-        resolveEnvironmentKey(dependency);
-      }
-    }
-
-    auto localContext = context;
-    localContext.SetMacro("presetName", raw.Name);
-    if(raw.EffectiveGenerator.has_value()) {
-      localContext.SetMacro("generator", *raw.EffectiveGenerator);
-    }
-
-    for(const auto& [envName, envValue] : expandedValues) {
-      localContext.SetPresetEnvironmentValue(envName, envValue);
-    }
-
-    const auto expanded = localContext.ExpandString(rawValue);
-    expandedValues[key] = expanded.ExpandedString;
-    expandedStatusByKey[key] = expanded.Status;
-
-    visiting.erase(key);
-    visited.insert(key);
-  };
-
-  for(const auto& [key, _] : raw.RawEnvironment) {
-    resolveEnvironmentKey(key);
-  }
-
-  for(const auto& [key, value] : expandedValues) {
-    result.Environment[key] = value;
-    if(expandedStatusByKey[key] == ExpansionStatus::PartiallyExpanded) {
+  const auto resolvedEnvironment = ResolveEnvironmentEntries(raw.RawEnvironment,
+    raw.Name, raw.EffectiveGenerator, context);
+  for(const auto& [key, entry] : resolvedEnvironment.Entries) {
+    result.Environment[key] = entry.Value;
+    if(entry.Status != ResolvedFieldStatus::FullyResolved) {
       result.EnvironmentStatus = ExpansionStatus::PartiallyExpanded;
     }
   }
+  result.Reason = resolvedEnvironment.Reason;
 
   return result;
 }

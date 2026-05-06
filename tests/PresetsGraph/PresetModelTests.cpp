@@ -606,3 +606,97 @@ SCENARIO("Preset resolved state preserves structured JSON fields")
     }
   }
 }
+
+SCENARIO("Preset resolved state tracks expanded environment entries")
+{
+  GIVEN("A configure preset with macro-bearing environment entries")
+  {
+    PresetModel model;
+
+    auto preset = MakeNamedPreset<ConfigurePreset>("cfg");
+    preset->SetEnvironment({
+      {"A", std::optional<std::string>{"$env{HOME}/bin"}},
+      {"B", std::optional<std::string>{"literal"}},
+    });
+    model.AddPreset(std::move(preset));
+
+    WHEN("The preset resolved state is refreshed")
+    {
+      auto context = MacroContext{};
+      context.SetPresetEnvironmentValue("HOME", "/home/user");
+      model.RefreshResolvedState("cfg", context);
+
+      THEN("Each environment entry carries its own value and status")
+      {
+        const auto& resolved = model.GetPreset("cfg").GetResolvedFields();
+        const auto& environment = resolved.at("environment");
+
+        REQUIRE(environment.Status == ResolvedFieldStatus::FullyResolved);
+        REQUIRE(environment.Value.at("A").at("value") == "/home/user/bin");
+        REQUIRE(environment.Value.at("A").at("status") == "FullyResolved");
+        REQUIRE(environment.Value.at("B").at("value") == "literal");
+        REQUIRE(environment.Value.at("B").at("status") == "FullyResolved");
+      }
+    }
+  }
+}
+
+SCENARIO("Preset resolved state preserves unresolved environment references")
+{
+  GIVEN("A configure preset with a missing environment reference")
+  {
+    PresetModel model;
+
+    auto preset = MakeNamedPreset<ConfigurePreset>("cfg");
+    preset->SetEnvironment({
+      {"A", std::optional<std::string>{"$env{MISSING}/bin"}},
+    });
+    model.AddPreset(std::move(preset));
+
+    WHEN("The preset resolved state is refreshed without the reference")
+    {
+      model.RefreshResolvedState("cfg", MacroContext{});
+
+      THEN("The unresolved token remains in the resolved environment entry")
+      {
+        const auto& resolved = model.GetPreset("cfg").GetResolvedFields();
+        const auto& environment = resolved.at("environment");
+
+        REQUIRE(environment.Status == ResolvedFieldStatus::PartiallyResolved);
+        REQUIRE(environment.Value.at("A").at("value") == "$env{MISSING}/bin");
+        REQUIRE(environment.Value.at("A").at("status") == "PartiallyResolved");
+      }
+    }
+  }
+}
+
+SCENARIO("Preset resolved state tracks cmakeExecutable as a scalar field")
+{
+  GIVEN("A configure preset with a macro-bearing cmakeExecutable")
+  {
+    PresetModel model;
+
+    auto preset = MakeNamedPreset<ConfigurePreset>("cfg");
+    preset->SetRawJson(nlohmann::json{
+      {"name", "cfg"},
+      {"cmakeExecutable", "${sourceDir}/tools/cmake"},
+    });
+    model.AddPreset(std::move(preset));
+
+    WHEN("The preset resolved state is refreshed")
+    {
+      auto context = MacroContext{};
+      context.SetMacro("sourceDir", "/src");
+      model.RefreshResolvedState("cfg", context);
+
+      THEN("The executable path is expanded on the preset")
+      {
+        const auto& resolved = model.GetPreset("cfg").GetResolvedFields();
+
+        REQUIRE(resolved.at("cmakeExecutable").Value == "/src/tools/cmake");
+        REQUIRE(resolved.at("cmakeExecutable").Status
+          == ResolvedFieldStatus::FullyResolved);
+      }
+    }
+  }
+}

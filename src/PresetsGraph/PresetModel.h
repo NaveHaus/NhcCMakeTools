@@ -186,7 +186,10 @@ class WorkflowPreset : public Preset
   std::vector<WorkflowStep> m_Steps;
 };
 
-/// Resolved view used by graph resolution.
+/// Compatibility-only resolved view used by graph resolution.
+///
+/// Prefer RefreshResolvedState() and preset-owned resolved fields for new
+/// callers.
 struct ResolvedPreset
 {
   PresetKind Type = PresetKind::Configure;
