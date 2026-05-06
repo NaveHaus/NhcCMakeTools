@@ -44,6 +44,26 @@ To maintain repository integrity, agents MUST follow these rules:
 - **Build Consistency**: DO NOT directly modify or remove any files or directories listed in `.gitignore`
 - **Verification**: Always run build and test commands after modifications
 
+## Codebase Knowledge Graph (codebase-memory-mcp)
+`codebase-memory-mcp` is used to maintain a codebase knowledge graph
+
+### Rules (MANDATORY)
+- You MUST prefer codebase-memory-mcp tools over ripgrep/grep/glob/file-search for code discovery
+- You MUST offer to call `index_repository` first if the graph is not indexed yet
+
+### High-to-Low Tool Priority Order
+1. `search_graph` — find functions, classes, routes, variables by pattern
+2. `trace_path` — trace who calls a function or what it calls
+3. `get_code_snippet` — read specific function/class source code (NOT Read/cat)
+4. `query_graph` — run Cypher queries for complex patterns
+5. `get_architecture` — high-level project summary
+6. `search_code` — for text search (graph-augmented grep)
+
+### When to fall back to ripgrep/grep/glob/file-search
+- Searching for string literals, error messages, config values
+- Searching non-code files (Dockerfiles, shell scripts, configs)
+- When MCP tools return insufficient results
+
 ## Process
 
 ### Prerequisites (MANDATORY)
@@ -221,47 +241,3 @@ To maintain repository integrity, agents MUST follow these rules:
     ```powershell
     cmake --preset=clang-clangd-ninja-vcpkg-mt-s
     ```
-
-## Example OpenSpec Workflows
-
-### One-Shot Implementation
-Can be used for simple changes that require no investigation or decision making prior to implementation:
-- Generate and review the OpenSpec change artifacts in one shot:
-  - `openspec-ff-change <change-name>`
-  - `nhc-openspec-refine <change-name>`
-- Implement and verify the change:
-  - `openspec-apply-change <change-name>`
-- Implement and verify the change:
-  - `openspec-apply-change <change-name>`
-  - See [Edit-Build-Test Commands (MANDATORY)](#edit-build-test-commands-mandatory) for the required commands to use to implement the change
-  - `nhc-openspec-verify <change-name>`
-- Archive the completed OpenSpec change:
-  - `openspec-sync-specs <change-name>`
-  - `openspec-archive-change <change-name>`
-- Locally commit the working OpenSpec artifacts and associated project changes:
-  - `git add ./openspec/ <changed-files-and-or-directories>`, e.g.:
-    ```bash
-    git add ${pwd}/openspec ${pwd}/src ${pwd}/tests
-    ```
-  - Use the `nhc-openspec-commit` skill to complete the `git` commit
-
-### One-Shot Exploration to Implementation
-Can be used for straightforward changes that require some upfront investigation and/or decision making prior to implementing
-- Interactively research and investigate a change with the user:
-  - `openspec-explore <topic>`
-- Generate and review the OpenSpec change artifacts in one shot:
-  - `openspec-ff-change <change-name>`
-  - `nhc-openspec-refine <change-name>`
-- Implement and verify the change:
-  - `openspec-apply-change <change-name>`
-  - See [Edit-Build-Test Commands (MANDATORY)](#edit-build-test-commands-mandatory) for the required commands to use to implement the change
-  - `nhc-openspec-verify <change-name>`
-- Archive the completed OpenSpec change:
-  - `openspec-sync-specs <change-name>`
-  - `openspec-archive-change <change-name>`
-- Locally commit the working OpenSpec artifacts and associated project changes:
-  - `git add ./openspec/ <changed-files-and-or-directories>`, e.g.:
-    ```bash
-    git add ${pwd}/openspec ${pwd}/src ${pwd}/tests
-    ```
-  - Use the `nhc-openspec-commit` skill to complete the `git` commit
