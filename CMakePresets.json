@@ -14,10 +14,7 @@
       ],
       "name": ".vcpkg-root",
       "hidden": true,
-      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
-      "environment": {
-        "VCPKG_ROOT": "./vcpkg-root"
-      }
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
     },
     {
       "name": "vs18-vcpkg-mt-s",
