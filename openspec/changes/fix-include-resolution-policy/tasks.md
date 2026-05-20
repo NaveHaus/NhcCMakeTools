@@ -12,4 +12,4 @@
 
 - [x] 2.1 Build the affected manager test target after the RED/GREEN cycle.
 - [x] 2.2 Run the `GraphManagerTests` test selection and confirm the new unsupported-macro cases pass.
-- [x] 2.3 Run `cmake --workflow --preset=clangd-ninja-vcpkg-release-test` to verify the full project after the change.
+- [x] 2.3 Run `cmake --workflow --preset=clang-clangd-ninja-vcpkg-mt-s-release-test` to verify the full project after the change.
