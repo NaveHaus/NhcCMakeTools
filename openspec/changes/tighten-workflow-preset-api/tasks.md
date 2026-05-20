@@ -12,4 +12,4 @@
 ## 3. REFACTOR — verify and clean up
 
 - [x] 3.1 Review `WorkflowPreset` for any remaining inherited public accessors that are inconsistent with the `name`-and-`steps`-only typed contract; hide any that are found.
-- [x] 3.2 Run `cmake --workflow --preset=clangd-ninja-vcpkg-release-test` to verify the full build and test workflow is green before completing the change.
+- [x] 3.2 Run `cmake --workflow --preset=clang-clangd-ninja-vcpkg-mt-s-release-test` to verify the full build and test workflow is green before completing the change.
