@@ -15,12 +15,12 @@ If the reload attempt fails, the file node SHALL be left marked Unresolved with 
 - **AND** the file node is not left marked Unresolved with reason `FileDoesNotExist` after the successful reload
 
 #### Scenario: Failed reload after reset records current-attempt reason
-- **GIVEN** a previous `ApplyContext()` call marked a file node Unresolved with reason `ParseError`
+- **GIVEN** a previous `ApplyContext()` call marked a file node Unresolved with reason `InvalidJson`
 - **AND** the file is removed before the next `ApplyContext()` call
 - **WHEN** the Manager retries loading that file on the later `ApplyContext()` call
 - **THEN** the Manager clears the prior unresolved load state before the retry
 - **AND** the file node is left marked Unresolved with reason `FileDoesNotExist`
-- **AND** the file node is not left marked Unresolved with the stale reason `ParseError` from the prior attempt
+- **AND** the file node is not left marked Unresolved with the stale reason `InvalidJson` from the prior attempt
 
 ## MODIFIED Requirements
 
