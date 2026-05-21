@@ -18,4 +18,4 @@
 - [x] 3.1 Migrate current internal callers that still depend on the public `ResolvedPreset` path to use preset-owned resolved fields where the replacement path is complete.
 - [x] 3.2 Mark the public `ResolvedPreset` path as compatibility-only or deprecated in the implementation comments and API surface without removing it yet.
 - [x] 3.3 Refactor any duplicated resolved-state logic revealed by the migration while keeping behavior unchanged.
-- [x] 3.4 Run `cmake --workflow --preset=clangd-ninja-vcpkg-release-test` to verify the full build and test suite after the TDD cycle completes.
+- [x] 3.4 Run `cmake --workflow --preset=clang-clangd-ninja-vcpkg-mt-s-release-test` to verify the full build and test suite after the TDD cycle completes.
