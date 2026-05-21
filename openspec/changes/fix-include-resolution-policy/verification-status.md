@@ -4,7 +4,7 @@ This file tracks the current `openspec-verify` findings list and working decisio
 for the implementation of the `fix-include-resolution-policy` change. Treat this as the running memory for the
 implementation verification process; it is NOT a spec artifact.
 
-Last updated: 2026-05-20
+Last updated: 2026-05-21
 
 ### Summary
 | Dimension    | Status                                                                 |
@@ -27,10 +27,14 @@ Last updated: 2026-05-20
 
 ## Verification Run Log
 
-- Command: `cmake --workflow --preset=clang-clangd-ninja-vcpkg-mt-s-release-test`
-- Result: FAILED at configure step.
-- Reason: Toolchain not found at `./vcpkg-root/scripts/buildsystems/vcpkg.cmake`. The `.vcpkg-root` configure preset still has `"environment": { "VCPKG_ROOT": "./vcpkg-root" }` (CMakePresets.json:18-20), which overrides the inherited `VCPKG_ROOT` from the parent shell. Failure is environmental and unrelated to the change under verification.
-- Code under review is unchanged and its unit tests at the manager boundary cover the delta scenarios; the workflow failure stems from build environment configuration outside the change scope.
+- (2026-05-20) Command: `cmake --workflow --preset=clang-clangd-ninja-vcpkg-mt-s-release-test`
+  - Result: FAILED at configure step.
+  - Reason: At the time of this run, the `.vcpkg-root` configure preset still had `"environment": { "VCPKG_ROOT": "./vcpkg-root" }`, overriding the inherited `VCPKG_ROOT`. Environmental, unrelated to the change under verification.
+- (2026-05-21) Re-run after parent branch picked up `5d031fe build: allow VCPKG_ROOT to be overridden from the environment`:
+  - Command: `cmake --workflow --preset=clang-clangd-ninja-vcpkg-mt-s-release-test`
+  - Result: FAILED at vcpkg manifest install — unrelated triplet defect (preset hardcodes `VCPKG_TARGET_TRIPLET=x64-linux` / `VCPKG_HOST_TRIPLET=x64-linux` on a Windows clang preset). Out of scope.
+  - Fallback Command: `cmake --workflow --preset=vs18-vcpkg-mt-s-release-test`
+  - Result: SUCCESS. `100% tests passed, 0 tests failed out of 9` in 0.14s. `GraphManagerTests` PASSED.
 
 ## Findings List by Priority
 
@@ -50,10 +54,20 @@ Last updated: 2026-05-20
     - (none — task-text only)
 
 2. Workflow preset run could not be executed in this worktree due to `CMakePresets.json` overriding `VCPKG_ROOT` to a relative `./vcpkg-root`.
+  - Status: Resolved (2026-05-21)
+  - Notes:
+    - Original block: harness assertion that `CMakePresets.json` honored inherited `VCPKG_ROOT` did not hold at first-pass time.
+    - Resolution: parent branch picked up commit `5d031fe build: allow VCPKG_ROOT to be overridden from the environment`. Re-run with `vs18-vcpkg-mt-s-release-test` succeeded (`100% tests passed, 0 of 9 failed`).
+  - Artifacts touched:
+    - (none in this change)
+  - Sources touched:
+    - `CMakePresets.json` (out-of-scope; fixed on parent branch)
+
+3. Named workflow preset `clang-clangd-ninja-vcpkg-mt-s-release-test` blocked by Linux-triplet defect on Windows clang preset.
   - Status: Deferred
   - Notes:
-    - The harness instructions assert `CMakePresets.json` has been updated to honor inherited `VCPKG_ROOT`; the worktree's `.vcpkg-root` configure preset still defines `environment.VCPKG_ROOT = "./vcpkg-root"`, which causes CMake to look for the toolchain at a non-existent relative path.
-    - Outside the scope of this OpenSpec change (which targets `PresetsGraph.cpp` include-policy delegation). Workflow verification at the manager-boundary is covered by the dedicated `GraphManagerTests` unit cases for the three unsupported-macro scenarios required by tasks 1.1-1.3.
+    - `CMakePresets.json` hardcodes `VCPKG_TARGET_TRIPLET=x64-linux` / `VCPKG_HOST_TRIPLET=x64-linux` on this preset. Causes vcpkg manifest install to fail when run on Windows.
+    - Out of scope for this OpenSpec change. Workflow re-verification accomplished via `vs18-vcpkg-mt-s-release-test` fallback.
   - Artifacts touched:
     - (none in this change)
   - Sources touched:
