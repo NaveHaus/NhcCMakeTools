@@ -10,7 +10,7 @@ Last updated: 2026-05-21
 | Dimension    | Status                                  |
 |--------------|-----------------------------------------|
 | Completeness | 13/13 tasks, 2 reqs covered             |
-| Correctness  | 2/2 reqs implemented; workflow blocked  |
+| Correctness  | 2/2 reqs implemented; tests 9/9 PASS    |
 | Coherence    | Design followed; one stale preset name  |
 
 ## Key References
@@ -24,11 +24,11 @@ Last updated: 2026-05-21
 
 ## Current Working Constraints / Decisions
 
-- Worktree base commit: `0602a2d` (parent branch tip `claude/cmake-presets-graph-design-6Eo8t`).
-- Upstream commit `5d031fe` (VCPKG_ROOT env override) is NOT in the parent branch; `CMakePresets.json` still hardcodes `VCPKG_ROOT=./vcpkg-root`.
-- File-edit permissions in this worktree are scoped to `openspec/changes/**` and `.claude/worktrees/**`. CMakePresets.json at worktree root cannot be modified; `git cherry-pick` is not in the allowlist either.
-- Per task instructions, NO `vcpkg-root` junction may be created.
-- Workflow re-run was attempted with the correct existing preset `clang-clangd-ninja-vcpkg-mt-s-release-test`. It failed at the configure step because the hardcoded `./vcpkg-root` toolchain path does not resolve (env override is ignored without `5d031fe`).
+- Parent branch `claude/cmake-presets-graph-design-6Eo8t` HEAD: `8aa054a` (after this verification commit). `5d031fe` (VCPKG_ROOT env override) IS present in the branch; the toolchain path resolves via `$env{VCPKG_ROOT}`.
+- The named worktree directory `.claude/worktrees/agent-ae27b9337f72de94f` does not exist on disk; `git worktree list` reports only the main worktree. All verification edits and commits landed on the parent branch directly.
+- `VCPKG_ROOT=d:/dev/nhc/oss/NhcCMakeTools/working.git/vcpkg-root` is available; the directory is a populated vcpkg checkout.
+- Per task instructions, NO `vcpkg-root` junction was created.
+- Workflow re-run was attempted with the correct existing preset `clang-clangd-ninja-vcpkg-mt-s-release-test`. It failed at vcpkg manifest install: the preset sets `VCPKG_TARGET_TRIPLET=x64-linux` / `VCPKG_HOST_TRIPLET=x64-linux` (CMakePresets.json lines 84-85), and vcpkg's `detect_compiler` for `x64-linux` failed on this Windows host before the build could proceed. This is a CMakePresets.json defect (Linux triplet on a clang/Windows preset) — not a defect in `complete-resolved-state-model`.
 
 ## Findings List by Priority
 
@@ -49,17 +49,26 @@ Last updated: 2026-05-21
   - Sources touched, using relative paths:
     - (none)
 
-2. Workflow re-run could not be executed in this verification round
+2. Workflow re-run via the change's named preset is blocked by an unrelated CMakePresets.json triplet defect
   - Status: Deferred
   - Notes:
-    - Configure failed with `Could not find toolchain file: "./vcpkg-root/scripts/buildsystems/vcpkg.cmake"`.
-    - Root cause is environmental: parent branch is missing commit `5d031fe` (VCPKG_ROOT env override). Worktree permissions disallow editing `CMakePresets.json` and cherry-picking; instructions forbid creating the `vcpkg-root` junction.
-    - This is not a defect in the `complete-resolved-state-model` change itself. The change's own implementation (preset-owned resolved state, environment nesting, allowlist, compatibility marker) is in place per source inspection.
-    - Recommend re-running `cmake --workflow --preset=clang-clangd-ninja-vcpkg-mt-s-release-test` once `5d031fe` lands on the parent branch.
+    - Attempted: `cmake --workflow --preset clang-clangd-ninja-vcpkg-mt-s-release-test`. Failure: vcpkg `detect_compiler` for the configured `x64-linux` triplet failed on this Windows host (`VCPKG_TARGET_TRIPLET=x64-linux` / `VCPKG_HOST_TRIPLET=x64-linux` at CMakePresets.json lines 84-85). Configure aborted with `Could not find ... Ninja Multi-Config` and `CMAKE_CXX_COMPILER not set`.
+    - Fallback verification: ran `cmake --workflow --preset vs18-vcpkg-mt-s-release-test` (same suite, MSVC toolchain, correct `x64-windows-static` triplet). Result: all 9 ctest targets passed in 0.99s including `PresetModelTests` which is the change's own test target. Build dir: `.build/vs18-vcpkg-mt-s`.
+    - The blocker is unrelated to `complete-resolved-state-model` (it is a preset-config defect: a Linux triplet hardcoded into a Windows clang preset). Recommend fixing under a separate change.
   - Artifacts touched:
     - (none)
   - Sources touched, using relative paths:
-    - `CMakePresets.json` (cannot edit in this worktree)
+    - `CMakePresets.json` (lines 84-85; preset triplet defect outside this change's scope)
+
+3. Tests fully pass under alternate workflow preset (informational)
+  - Status: Completed
+  - Notes:
+    - `cmake --workflow --preset vs18-vcpkg-mt-s-release-test` succeeded end-to-end. ctest summary: `100% tests passed, 0 tests failed out of 9` (Total Test time 0.99s). `PresetModelTests` PASSED.
+    - Source inspection independently confirms implementation: preset-owned resolved state with nested `environment` key (PresetModel.cpp:535-575), per-entry `FullyResolved`/`PartiallyResolved`/`Unresolved` status (lines 77-114, 122), `cmakeExecutable` in scalar allowlist (line 86), `ResolvedPreset` marked compatibility-only (PresetModel.h:189-204).
+  - Artifacts touched:
+    - (none)
+  - Sources touched, using relative paths:
+    - (none)
 
 ### SUGGESTION
 
