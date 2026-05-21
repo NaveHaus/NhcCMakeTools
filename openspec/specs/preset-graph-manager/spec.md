@@ -1,9 +1,7 @@
 ## Purpose
 
 Define orchestration behavior for loading preset files and resolving include, inheritance, macro, and workflow state.
-
 ## Requirements
-
 ### Requirement: Graph Orchestration
 The Presets Graph Manager SHALL own instances of the Include Graph and the Inheritance Graph.
 
@@ -14,9 +12,24 @@ The Presets Graph Manager SHALL own instances of the Include Graph and the Inher
 ### Requirement: Context Application Loop
 The Presets Graph Manager SHALL orchestrate the resolution loop when a new Macro Context is applied, first resolving the Include graph, handling any newly discovered include file paths, refreshing typed preset collections from successfully loaded files, and subsequently resolving the Inheritance graph.
 
+The manager SHALL use the Include Graph as the authoritative resolver for include-string expansion and macro-policy enforcement for each file node it processes.
+
 #### Scenario: Applying context discovers new files
 - **WHEN** a context is applied and an include string expands to a new file path "extra-presets.json"
 - **THEN** the Manager orchestrates loading the new file, adding its nodes, and re-running resolution until no new files are found
+
+#### Scenario: Applying context surfaces unsupported include macros from the include graph
+- **GIVEN** a loaded preset file contains an `include` string using an unsupported macro syntax
+- **WHEN** the Manager applies a context and resolves includes for that file
+- **THEN** the Manager preserves the Include Graph unresolved diagnostic for that file node
+- **AND** the unresolved reason reported for that file is `UnsupportedMacro`
+
+#### Scenario: Applying context tolerates repeated inclusion of the same file
+- **GIVEN** file A includes file B and file C
+- **AND** file C also includes file B
+- **WHEN** the Manager applies a context
+- **THEN** file B is loaded exactly once
+- **AND** file B is not marked Unresolved with reason `IncludeCycle`
 
 ### Requirement: File Loading and JSON Parsing
 The Presets Graph Manager SHALL be constructed with a file loader abstraction.
@@ -158,12 +171,25 @@ At minimum, the following mappings SHALL be supported:
 - CMake 3.28 supports preset file version 8
 - CMake 3.30 supports preset file version 9
 - CMake 3.31 supports preset file version 10
+- CMake 4.0 supports preset file version 10
+- CMake 4.1 supports preset file version 10
+- CMake 4.2 supports preset file version 10
 - CMake 4.3 supports preset file version 11
 
-#### Scenario: Deriving supported preset file version
+#### Scenario: Deriving supported preset file version for CMake 3.30
 - **GIVEN** simulated CMake version 3.30.0
 - **WHEN** the Manager computes the supported preset file version
 - **THEN** it reports supported preset file version 9
+
+#### Scenario: Deriving supported preset file version for CMake 4.2
+- **GIVEN** simulated CMake version 4.2.0
+- **WHEN** the Manager computes the supported preset file version
+- **THEN** it reports supported preset file version 10
+
+#### Scenario: Deriving supported preset file version for CMake 4.3
+- **GIVEN** simulated CMake version 4.3.0
+- **WHEN** the Manager computes the supported preset file version
+- **THEN** it reports supported preset file version 11
 
 ### Requirement: File-Derived Macro Population
 When resolving include strings within a specific preset file node, the Presets Graph Manager SHALL populate the Macro Context with macro values that can be derived from the file node.
@@ -176,6 +202,8 @@ The manager SHALL construct the Macro Context used for include expansion by:
 - Starting from the caller-provided Macro Context macro map
 - Injecting file-derived macros such as `${fileDir}`
 - Injecting constant macros such as `${dollar}`
+
+The manager SHALL provide that per-file Macro Context to the Include Graph resolution step rather than applying separate include-policy logic in the manager.
 
 #### Scenario: Resolving an include using fileDir
 - **GIVEN** a file node at path "./a/b/c/CMakePresets.json"
@@ -230,3 +258,47 @@ The Presets Graph Manager SHALL compute its overall composite state based strict
 #### Scenario: Computing composite Unresolved state
 - **WHEN** the Include graph is Resolved but the Inheritance graph is Unresolved
 - **THEN** the Presets Graph Manager reports an overall state of Unresolved
+
+### Requirement: Reload Attempts Recompute File Unresolved State
+The Presets Graph Manager SHALL clear a file node's unresolved load state before retrying that file during a later `ApplyContext()` call.
+
+If the reload attempt succeeds, the file node SHALL remain cleared of any prior unresolved load reason from an earlier failed attempt.
+
+If the reload attempt fails, the file node SHALL be left marked Unresolved with the reason assigned by the current reload attempt, not any reason carried over from a prior attempt.
+
+#### Scenario: Successful reload clears stale unresolved file state
+- **GIVEN** a previous `ApplyContext()` call marked a file node Unresolved with reason `FileDoesNotExist`
+- **AND** the file is made available before the next `ApplyContext()` call
+- **WHEN** the Manager retries loading that file on the later `ApplyContext()` call
+- **THEN** the Manager clears the prior unresolved load state before the retry
+- **AND** the file node is not left marked Unresolved with reason `FileDoesNotExist` after the successful reload
+
+#### Scenario: Failed reload after reset records current-attempt reason
+- **GIVEN** a previous `ApplyContext()` call marked a file node Unresolved with reason `InvalidJson`
+- **AND** the file is removed before the next `ApplyContext()` call
+- **WHEN** the Manager retries loading that file on the later `ApplyContext()` call
+- **THEN** the Manager clears the prior unresolved load state before the retry
+- **AND** the file node is left marked Unresolved with reason `FileDoesNotExist`
+- **AND** the file node is not left marked Unresolved with the stale reason `InvalidJson` from the prior attempt
+
+### Requirement: Effective-Condition Payload Publishing
+After ingesting preset collections and before invoking availability evaluation in the Inheritance Graph, the Presets Graph Manager SHALL publish the effective condition for each Configure, Build, Test, and Package preset payload.
+
+For each such preset, the Manager SHALL obtain the effective condition by calling `PresetModel::ResolveCondition()` and store the result in the corresponding Inheritance Graph payload.
+
+If `ResolveCondition()` returns no effective condition (absent), the Manager SHALL leave the Inheritance Graph payload's effective condition unset. The Inheritance Graph SHALL treat an absent effective condition as Active in the absence of other disabling conditions.
+
+Workflow presets do not participate in this effective-condition publishing step.
+
+#### Scenario: Inherited condition is published before availability evaluation
+- **GIVEN** preset `P0` has condition `false`
+- **AND** preset `C` inherits from [`P0`] and does not define a local condition
+- **WHEN** the Manager publishes effective conditions after preset collection ingestion
+- **THEN** the Inheritance Graph payload for preset `C` carries the effective condition resolved from `P0`
+- **AND** the Inheritance Graph reports preset `C` as Disabled during availability evaluation
+
+#### Scenario: Workflow presets are excluded from effective-condition publishing
+- **GIVEN** a workflow preset `W` references configure preset `C` as a step
+- **WHEN** the Manager publishes effective conditions during refresh
+- **THEN** preset `W` is not passed to `PresetModel::ResolveCondition()` for effective-condition publishing
+

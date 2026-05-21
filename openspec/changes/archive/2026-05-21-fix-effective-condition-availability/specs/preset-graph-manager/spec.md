@@ -1,4 +1,4 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: Effective-Condition Payload Publishing
 After ingesting preset collections and before invoking availability evaluation in the Inheritance Graph, the Presets Graph Manager SHALL publish the effective condition for each Configure, Build, Test, and Package preset payload.

@@ -1,9 +1,7 @@
 ## Purpose
 
 Define the typed CMake preset model, resolved state, inheritance merge behavior, and workflow compatibility diagnostics.
-
 ## Requirements
-
 ### Requirement: Preset Type Identification
 The system SHALL represent CMake presets as one of the following types:
 - ConfigurePreset
@@ -25,7 +23,7 @@ The system SHALL implement a class hierarchy for preset types:
 - `BuildPreset` SHALL derive from `Preset` and add: `configurePreset`, `inheritConfigureEnvironment`.
 - `TestPreset` SHALL derive from `Preset` and add: `configurePreset`, `inheritConfigureEnvironment`.
 - `PackagePreset` SHALL derive from `Preset` and add: `configurePreset`, `inheritConfigureEnvironment`.
-- `WorkflowPreset` MAY derive from `Preset` for implementation convenience, but the typed API SHALL expose only `name` and `steps` for workflow presets. Per the CMake specification, workflow presets do not support `hidden`, `inherits`, `condition`, or `environment`, so callers SHALL NOT be given typed accessors for those fields on a `WorkflowPreset`.
+- `WorkflowPreset` MAY derive from `Preset` for implementation convenience, but the typed API SHALL expose only `name` and `steps` for workflow presets. Per the CMake specification, workflow presets do not support `hidden`, `inherits`, `condition`, or `environment`, so callers SHALL NOT be given typed accessors for those fields on a `WorkflowPreset`. In addition, callers SHALL NOT be given typed accessors for inherited condition-state helpers (`GetConditionState`, `SetConditionExplicitNull`, `ClearCondition`) that allow observing or modifying workflow condition state.
 
 The `PresetModel` SHALL store presets polymorphically and provide type-safe accessors.
 
@@ -43,8 +41,15 @@ The `PresetModel` SHALL store presets polymorphically and provide type-safe acce
 #### Scenario: WorkflowPreset omits unsupported typed accessors
 - **GIVEN** a WorkflowPreset named "wf" with steps
 - **WHEN** the preset is queried
-- **THEN** its typed API does NOT expose `hidden`, `inherits`, `condition`, or `environment`
+- **THEN** its typed API does NOT expose inherited `hidden`, `inherits`, `condition`, or `environment` accessors
 - **AND** it exposes `name` and `steps`
+
+#### Scenario: WorkflowPreset omits inherited condition-state helpers
+- **GIVEN** a WorkflowPreset named "wf"
+- **WHEN** the preset is queried through the typed workflow API
+- **THEN** callers cannot call `GetConditionState()` on a `WorkflowPreset`
+- **AND** callers cannot call `SetConditionExplicitNull()` on a `WorkflowPreset`
+- **AND** callers cannot call `ClearCondition()` on a `WorkflowPreset`
 
 ### Requirement: Workflow Step Compatibility
 The system SHALL model workflow presets using the CMake workflow-step constraints.
@@ -88,8 +93,10 @@ The resolved-state object SHALL:
 - Store the current resolved value for each tracked field after inheritance merge and macro expansion.
 - Record whether each tracked field is unresolved, partially resolved, or fully resolved.
 - Preserve structured fields using JSON when the field is not naturally a scalar string.
+- Represent effective environment entries in preset-owned resolved state after environment merge and expansion, with one tracked resolved entry per environment key, stored under a single `environment` key in the resolved-state object using a nested object keyed by environment variable name.
+- Track library-relevant macro-expandable scalar preset fields beyond `generator`, `installDir`, `binaryDir`, and `toolchainFile` as coverage is added, using the scalar allowlist inclusion criteria defined in the design.
 
-The system SHALL NOT require a separate model-managed `ResolvedPreset` or `RawResolvedPreset` object to represent resolved state.
+The system SHALL NOT require a separate model-managed `ResolvedPreset` or `RawResolvedPreset` object to represent resolved state, and preset-owned resolved fields SHALL be the authoritative resolved-state interface for callers.
 
 #### Scenario: Preserving a partially resolved field on the preset
 - **GIVEN** a ConfigurePreset whose raw JSON `binaryDir` is `"${sourceDir}/build/${unknown}"`
@@ -104,16 +111,38 @@ The system SHALL NOT require a separate model-managed `ResolvedPreset` or `RawRe
 - **THEN** the preset retains the original raw JSON `cacheVariables`
 - **AND** the preset's resolved state can retain `cacheVariables` as structured JSON
 
+#### Scenario: Tracking expanded environment entries on the preset
+- **GIVEN** a ConfigurePreset whose effective environment contains `A="$env{HOME}"` and `B="$env{MISSING}"`
+- **WHEN** the preset refreshes its resolved state with `HOME` defined and `MISSING` undefined
+- **THEN** the preset's resolved state stores one tracked entry for `A` with the expanded value
+- **AND** the entry for `A` is marked fully resolved
+- **AND** the preset's resolved state stores one tracked entry for `B` with the unresolved macro preserved
+- **AND** the entry for `B` is marked partially resolved
+
+#### Scenario: Tracking additional scalar preset fields in resolved state
+- **GIVEN** a ConfigurePreset whose raw JSON `cmakeExecutable` is `"${sourceDir}/tools/cmake"`
+- **WHEN** the preset refreshes its resolved state with `sourceDir` defined
+- **THEN** the preset's resolved state stores the expanded `cmakeExecutable` value
+- **AND** the `cmakeExecutable` entry is marked fully resolved
+
 ### Requirement: Diagnostic-Friendly Resolved State
 The preset resolved-state model SHALL preserve unresolved macro references exactly as produced by the library's macro-expansion rules.
 
 The system SHALL NOT coerce missing `$env{}` / `$penv{}` references to empty strings for the sake of strict CMake emulation.
+
+This requirement applies equally to top-level scalar fields and to resolved environment entries stored on the preset.
 
 #### Scenario: Preserving a missing environment reference in resolved state
 - **GIVEN** a ConfigurePreset whose raw JSON `binaryDir` is `"$env{MISSING}/build"`
 - **WHEN** the preset refreshes its resolved state with no `MISSING` value in preset or parent environment
 - **THEN** the preset's resolved state retains `"$env{MISSING}/build"` as the current value
 - **AND** the `binaryDir` entry is not marked fully resolved
+
+#### Scenario: Preserving a missing environment reference in a resolved environment entry
+- **GIVEN** a ConfigurePreset whose effective environment contains `A="$env{MISSING}/bin"`
+- **WHEN** the preset refreshes its resolved state with no `MISSING` value in preset or parent environment
+- **THEN** the preset's resolved state retains `"$env{MISSING}/bin"` as the current value for `A`
+- **AND** the resolved entry for `A` is not marked fully resolved
 
 ### Requirement: Preset-Associated Macro Population
 When expanding a macro-expandable field that belongs to a specific preset, the system SHALL populate the Macro Context with preset-associated macro values for that preset.
@@ -266,3 +295,36 @@ All other fields MAY be retained in the raw/original JSON and, when the library 
 - **WHEN** a caller retrieves the preset
 - **THEN** the caller can access it as a `ConfigurePreset` to read `generator`
 - **AND** the caller can access it as a base `Preset` to read common fields
+
+### Requirement: Cycle-Safe Effective Condition Resolution
+The preset model SHALL resolve a preset's effective condition using standard `inherits` precedence without recursing indefinitely through cyclic inherits chains.
+
+Effective-condition lookup SHALL:
+- return the preset's local evaluable condition when one is present;
+- treat local `condition: null` as clearing the current preset's inherited condition;
+- skip inheriting an explicit `null` condition from an ancestor; and
+- stop traversing any inherits path that re-enters a preset already being visited.
+
+If every reachable inherits path is terminated by explicit `null`, missing parents, or a detected cycle before producing an evaluable condition, the effective condition SHALL be absent.
+
+#### Scenario: ResolveCondition returns an inherited evaluable condition
+- **GIVEN** preset `P0` has condition `false`
+- **AND** preset `C` inherits from [`P0`] and does not define a local condition
+- **WHEN** the preset model resolves the effective condition for `C`
+- **THEN** the result is the evaluable condition inherited from `P0`
+
+#### Scenario: ResolveCondition skips explicit null when traversing descendants
+- **GIVEN** preset `P0` has condition `false`
+- **AND** preset `C` inherits from [`P0`] and defines `condition: null`
+- **AND** preset `G` inherits from [`C`] and does not define `condition`
+- **WHEN** the preset model resolves the effective condition for `G`
+- **THEN** the result is absent
+
+#### Scenario: ResolveCondition terminates safely on an inherits cycle
+- **GIVEN** preset `A` inherits from [`B`]
+- **AND** preset `B` inherits from [`A`]
+- **AND** neither preset defines a local evaluable condition
+- **WHEN** the preset model resolves the effective condition for `A`
+- **THEN** the lookup completes without unbounded recursion
+- **AND** the result is absent
+
